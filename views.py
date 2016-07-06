@@ -3,6 +3,7 @@
 import flask.views
 import lib.handler
 
+
 class IndexView(flask.views.View):
     methods = ['GET', 'POST']
 
