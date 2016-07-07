@@ -50,9 +50,7 @@ class FileManagerHandler(object):
                         text='Internal Server Error'
                     )
                 finally:
-                    if file:
-                        file.close()
-
+                    file.close()
                 return flask.jsonify(result=content)
         else:
             return flask.jsonify(

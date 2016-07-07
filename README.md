@@ -20,8 +20,8 @@ On Ubuntu this can be achieved by running the following in a terminal:
   $ git clone git@github.com:magenta-aps/eark-python-bridge.git
   ```
 
-3. If the call is successful, it will create a subfolder ```eark-python-bridge```.
-4. ```cd``` into this folder and run:
+3. If the call is successful, it will create a subdirectory ```eark-python-bridge```.
+4. ```cd``` into this directory and run:
 
   ```
   $ virtualenv python-env
