@@ -38,5 +38,6 @@ On Ubuntu this can be achieved by running the following in a terminal:
 8. Create the data directory by running ```mkdir data```
 9. Copy some directory structure into the ```data``` directory.
 10. Run ```python app.py``` to start the builtin WSGI server.
+11. Remember to deactivate your virtualenv by running ```deactivate``` when finished.
 
 Happy hacking!
