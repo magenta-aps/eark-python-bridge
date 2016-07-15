@@ -28,12 +28,18 @@ class FileManagerHandler(object):
         files = []
         for item in list:
             fullpath = os.path.join(path, item)
+            type = self._get_file_type(fullpath)
+            if request.form['path'][-1] != '/':
+                relpath = request.form['path'] + '/' + item
+            else:
+                relpath = request.form['path'] + item
             file = dict(
                 name=item,
                 size=os.path.getsize(fullpath),
                 date=datetime.datetime
                     .fromtimestamp(os.path.getmtime(fullpath)).isoformat(),
-                type=self._get_file_type(fullpath)
+                type=type,
+                path=relpath
             )
             files.append(file)
         return flask.jsonify(files=files)
