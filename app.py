@@ -11,4 +11,4 @@ if __name__ == '__main__':
         DEBUG=True,
     )
     app.add_url_rule('/', view_func=views.IndexView.as_view('index'))
-    app.run()
+    app.run(host='0.0.0.0', port=8889)
