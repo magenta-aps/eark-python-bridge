@@ -125,8 +125,8 @@ class FileManagerHandler(object):
                                                    filename_wo_ext)
                 if success:
                     return flask.jsonify(
-                        preview_url=request.base_url + urllib.quote(rel_path),
-                        download_url=request.base_url + urllib.quote(filename)
+                        preview_url=request.host_url + urllib.quote(rel_path),
+                        download_url=request.host_url + urllib.quote(filename)
                     )
                 else:
                     return flask.jsonify(
@@ -135,8 +135,8 @@ class FileManagerHandler(object):
                     )
             else:
                 return flask.jsonify(
-                    preview_url=request.base_url + urllib.quote(rel_path),
-                    download_url=request.base_url + urllib.quote(filename)
+                    preview_url=request.host_url + urllib.quote(rel_path),
+                    download_url=request.host_url + urllib.quote(filename)
                 )
             # else:
             #     return flask.jsonify( # Unknown MIME
