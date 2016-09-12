@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 
 import flask.views
 import lib.handler
@@ -7,10 +8,10 @@ import lib.handler
 class IndexView(flask.views.View):
     methods = ['GET', 'POST']
 
-    def dispatch_request(self):
+    def dispatch_request(self, file_name=None):
         handler = lib.handler.FileManagerHandler()
         if flask.request.method == 'GET':
-            return handler.get(flask.request)
+            return handler.get(flask.request, file_name)
         elif flask.request.method == 'POST':
             return handler.post(flask.request)
         else:
@@ -20,3 +21,24 @@ class IndexView(flask.views.View):
                 error=405,
                 text='Not Allowed'
             )
+
+
+class PreviewAPI(flask.views.MethodView):
+    methods = ['GET']
+
+    def get(self, file_name):
+        path = lib.handler.FileManagerHandler.PREVIEW_DIR + file_name
+        if os.path.exists(path):
+            with open(path, 'r') as file:
+                try:
+                    content = file.read()
+                except os.error:
+                    flask.abort(500)
+                finally:
+                    file.close()
+                    response = flask.make_response(content)
+                    response.headers['Content-Type'] = \
+                        lib.handler.FileManagerHandler.MIME_PDF
+                    return response
+        else:
+            flask.abort(404)

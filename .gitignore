@@ -2,3 +2,6 @@
 data/
 *.pyc
 python-env/
+preview/
+static/
+templates/
