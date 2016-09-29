@@ -2,14 +2,14 @@
 import os
 
 import flask.views
-import lib.handler
+from handlers import FileManagerHandler
 
 
 class IndexView(flask.views.View):
     methods = ['GET', 'POST']
 
     def dispatch_request(self, file_name=None):
-        handler = lib.handler.FileManagerHandler()
+        handler = FileManagerHandler()
         if flask.request.method == 'GET':
             return handler.get(flask.request, file_name)
         elif flask.request.method == 'POST':
@@ -27,7 +27,7 @@ class PreviewAPI(flask.views.MethodView):
     methods = ['GET']
 
     def get(self, file_name):
-        path = lib.handler.FileManagerHandler.PREVIEW_DIR + file_name
+        path = FileManagerHandler.PREVIEW_DIR + file_name
         if os.path.exists(path):
             with open(path, 'r') as file:
                 try:
@@ -38,7 +38,7 @@ class PreviewAPI(flask.views.MethodView):
                     file.close()
                     response = flask.make_response(content)
                     response.headers['Content-Type'] = \
-                        lib.handler.FileManagerHandler.MIME_PDF
+                        FileManagerHandler.MIME_PDF
                     return response
         else:
             flask.abort(404)

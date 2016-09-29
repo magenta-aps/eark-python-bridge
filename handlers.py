@@ -6,22 +6,14 @@ import urllib
 import posixpath
 import flask
 import os
-
 import magic
 import subprocess
-
 import shutil
+
+import application
 
 
 class FileManagerHandler(object):
-    BASE_DIR = os.path.dirname(  # eark-python-bridge
-        os.path.dirname(  # lib
-            os.path.realpath(__file__)  # this script
-        )
-    )
-    DATA_DIR = BASE_DIR + '/data/'
-    PREVIEW_DIR = BASE_DIR + '/preview/'
-
     MIME_PDF = 'application/pdf'
     MIME_TXT = 'text/plain'
 
@@ -75,7 +67,7 @@ class FileManagerHandler(object):
                 "pdf",
                 "--headless",
                 "--outdir",
-                self.PREVIEW_DIR,
+                application.app.config['PREVIEW_DIR'],
                 checksum,
                 path
             ]
@@ -83,8 +75,9 @@ class FileManagerHandler(object):
         success2 = subprocess.call(
             [
                 "mv",
-                self.PREVIEW_DIR + filename_wo_ext + ".pdf",
-                self.PREVIEW_DIR + checksum
+                application.app.config['PREVIEW_DIR']
+                + filename_wo_ext + ".pdf",
+                application.app.config['PREVIEW_DIR'] + checksum
             ]
         )
         return success1 == 0 and success2 == 0
@@ -112,7 +105,7 @@ class FileManagerHandler(object):
             filename_wo_ext = os.path.splitext(os.path.split(path)[1])[0]
             filename = os.path.basename(path)
             rel_path = 'preview/' + checksum
-            preview_path = self.PREVIEW_DIR + checksum
+            preview_path = application.app.config['PREVIEW_DIR'] + checksum
             # We basically try to convert everything to PDFs and throw it in
             # the 'preview' directory unless it's already a PDF.
             #  Todo: Be more verbose about what went wrong if conversion fails?
@@ -161,7 +154,7 @@ class FileManagerHandler(object):
 
     def get(self, request, file_name):
         if file_name:
-            path = self.DATA_DIR + file_name
+            path = application.app.config['DATA_DIR'] + file_name
             mime = magic.from_file(path, mime=True)
             if os.path.exists(path):
                 with open(path, 'r') as file:
@@ -231,7 +224,7 @@ class FileManagerHandler(object):
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
         words = filter(None, words)
-        path = self.DATA_DIR
+        path = application.app.config['DATA_DIR']
         for word in words:
             drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)

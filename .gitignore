@@ -5,3 +5,4 @@ python-env/
 preview/
 static/
 templates/
+data.db
