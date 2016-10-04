@@ -10,7 +10,10 @@ import magic
 import subprocess
 import shutil
 
+from werkzeug.utils import secure_filename
+
 import application
+from models import LockedFile
 
 
 class FileManagerHandler(object):
@@ -36,7 +39,7 @@ class FileManagerHandler(object):
         except os.error:
             return flask.jsonify(
                 error=404,
-                text='Not Found'
+                error_text='Not Found'
             )
         files = []
         for item in list:
@@ -58,43 +61,6 @@ class FileManagerHandler(object):
             )
             files.append(file)
         return flask.jsonify(children=files)
-
-    def _create_preview(self, path, checksum, filename_wo_ext):
-        success1 = subprocess.call(
-            [
-                "libreoffice",
-                "--convert-to",
-                "pdf",
-                "--headless",
-                "--outdir",
-                application.app.config['PREVIEW_DIR'],
-                checksum,
-                path
-            ]
-        )
-        success2 = subprocess.call(
-            [
-                "mv",
-                application.app.config['PREVIEW_DIR']
-                + filename_wo_ext + ".pdf",
-                application.app.config['PREVIEW_DIR'] + checksum
-            ]
-        )
-        return success1 == 0 and success2 == 0
-
-    # def _is_previewable(self, mime):
-    #     return mime in self.CONVERT_MIME_LIST or mime == self.MIME_PDF \
-    #            or 'text' in mime.split()
-
-    def _copy_to_preview(self, path, preview_path):
-        try:
-            shutil.copyfile(path, preview_path)
-            return True
-        except IOError:
-            return flask.jsonify(
-                error=500,
-                text='Internal Server Error'
-            )
 
     def get_content(self, request):
         path = self.translate_path(request.form['path'])
@@ -124,29 +90,99 @@ class FileManagerHandler(object):
                 else:
                     return flask.jsonify(
                         error=500,
-                        text='Internal Server Error'
+                        error_text='Internal Server Error'
                     )
             else:
                 return flask.jsonify(
                     preview_url=request.host_url + urllib.quote(rel_path),
                     download_url=request.host_url + urllib.quote(filename)
                 )
-            # else:
-            #     return flask.jsonify( # Unknown MIME
-            #         error=500,
-            #         text='Internal Server Error'
-            #     )
         else:
             return flask.jsonify(
                 error=404,
-                text='Not Found'
+                error_text='Not Found'
             )
 
-# -*- endblock -*- #
+    def edit(self, request):
+        abs_path = self.translate_path(request.form['path'])
+        path = request.form['path']
+        file_name = os.path.basename(path)
+
+        if os.path.isfile(abs_path):
+            # Mark file as locked
+            locked_file = LockedFile.query.filter_by(path=path).first()
+            if locked_file:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File is locked'
+                )
+            else:
+                locked_file = LockedFile(path)
+                application.db_session.add(locked_file)
+                application.db_session.commit()
+        elif os.path.isdir(abs_path):
+            return flask.jsonify(
+                error=403,
+                error_text='Forbidden',
+                info='File is directory'
+            )
+        return self.get(request, file_name)
+
+    def commit(self, request):
+        path = request.form['path']
+        # Unmark locked file
+        locked_file = LockedFile.query.filter_by(path=path).first()
+        if locked_file:
+            application.db_session.delete(locked_file)
+            application.db_session.commit()
+            # Upload (overwrite) file
+            return self._upload_file(request)
+        else:
+            # File was not locked for editing...
+            return flask.jsonify(
+                error=403,
+                error_text='Forbidden',
+                info='File is not locked for editing'
+            )
+
+    def delete(self, request):
+        abs_path = self.translate_path(request.form['path'])
+        if os.path.isfile(abs_path):
+            locked_file = LockedFile.query.filter_by(path=abs_path).first()
+            # File was locked for editing...
+            if locked_file:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File is locked for editing'
+                )
+            try:
+                os.remove(abs_path)
+            except OSError:
+                return flask.jsonify(
+                    error=500,
+                    error_text='Internal Server Error',
+                    info='Error while deleting file'
+                )
+            return flask.jsonify(
+                success=True,
+            )
+        else:
+            return flask.jsonify(
+                error=404,
+                error_text='Not Found',
+                info='File was not found'
+            )
+
+    # -*- endblock -*- #
 
     modes = {
         'list': list,
         'getcontent': get_content,
+        'edit': edit,
+        'commit': commit,
+        'delete': delete,
     }
 
     def post(self, request):
@@ -163,7 +199,7 @@ class FileManagerHandler(object):
                     except os.error:
                         return flask.jsonify(
                             error=500,
-                            text='Internal Server Error'
+                            error_text='Internal Server Error'
                         )
                     finally:
                         file.close()
@@ -173,7 +209,7 @@ class FileManagerHandler(object):
             else:
                 return flask.jsonify(
                     error=404,
-                    text='Not Found'
+                    error_text='Not Found'
                 )
 
         return flask.jsonify(error='Not implemented.')
@@ -205,6 +241,55 @@ class FileManagerHandler(object):
             for chunk in iter(lambda: f.read(4096), b""):
                 hashf.update(chunk)
         return hashf.hexdigest()
+
+    def _create_preview(self, path, checksum, filename_wo_ext):
+        success = subprocess.call(
+            [
+                "unoconv",
+                "-f",
+                "pdf",
+                "-o",
+                application.app.config['PREVIEW_DIR'] + checksum,
+                path
+            ]
+        )
+        return success == 0
+
+    def _copy_to_preview(self, path, preview_path):
+        try:
+            shutil.copyfile(path, preview_path)
+            return True
+        except IOError:
+            return flask.jsonify(
+                error=500,
+                error_text='Internal Server Error'
+            )
+
+    def _upload_file(self, request):
+        path = application.app.config['DATA_DIR']
+        if request.method == 'POST':
+            # check if the post request has the file part
+            if 'file' not in request.files:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File not specified',
+                )
+            file = request.files['file']
+            # if user does not select file, browser also
+            # submit a empty part without filename
+            if file.filename == '':
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File not specified',
+                )
+            if file:
+                filename = secure_filename(file.filename)
+                file.save(path + filename)
+                return flask.jsonify(
+                    success=True,
+                )
 
     def translate_path(self, path):
         """

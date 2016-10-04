@@ -2,6 +2,8 @@
 import os
 
 import flask.views
+
+import application
 from handlers import FileManagerHandler
 
 
@@ -27,7 +29,7 @@ class PreviewAPI(flask.views.MethodView):
     methods = ['GET']
 
     def get(self, file_name):
-        path = FileManagerHandler.PREVIEW_DIR + file_name
+        path = application.app.config['PREVIEW_DIR'] + file_name
         if os.path.exists(path):
             with open(path, 'r') as file:
                 try:
