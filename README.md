@@ -9,14 +9,18 @@ The installation script assumes that we're running on Ubuntu/Debian. It installs
 1. In a terminal, cd into the directory where you store your projects.
 
 2. Clone this repository by running:
+
   ```
   $ git clone git@github.com:magenta-aps/eark-python-bridge.git
   ```
+  
 3. If the call is successful, it will create a subdirectory ```eark-python-bridge```.
 4. cd into this directory and run:
+
   ```
   $ ./install.sh
   ```
+
 5. This scripts prompts your password because it needs sudo. It initializes your virtual environment, database (```data.db```) and creates the folders ```python-env```,```data```,```preview```. The script prints a lot of info. Don't panic if you see warnings. If, near the bottom, you see this:
 
   ```
