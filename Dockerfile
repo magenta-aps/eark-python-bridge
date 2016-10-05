@@ -5,6 +5,5 @@ RUN apt-get install -y python-pip python-dev build-essential sqlite3
 COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
-RUN bash install.sh
 ENTRYPOINT ["python"]
 CMD ["application.py"]
