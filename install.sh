@@ -12,7 +12,7 @@
 PYTHON_ENV="python-env"
 DATABASE_FILE="data.db"
 
-sudo apt-get -y install python-pip python-dev build-essential
+sudo apt-get -y install python-pip python-dev build-essential sqlite3
 sudo pip install virtualenv
 sudo pip install --upgrade pip
 

@@ -4,7 +4,7 @@ Expose a directory and it's content via a REST service.
 ## Installation
 You need to have git and python 2.7 installed. In addition you should have virtualenv and pip as well.
 
-The installation script assumes that we're running on Ubuntu/Debian. It installs the packages ```python-pip```, ```python-dev```, ```build-essential``` if they're not already present. In addition, pip installs ```virtualenv```.
+The installation script assumes that we're running on Ubuntu/Debian. It installs the packages ```python-pip```, ```python-dev```, ```build-essential``` and ```sqlite3``` if they're not already present. In addition, pip installs ```virtualenv```.
 
 1. In a terminal, cd into the directory where you store your projects.
 
