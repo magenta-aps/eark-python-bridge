@@ -27,7 +27,7 @@ The installation script assumes that we're running on Ubuntu/Debian. It installs
   Successfully installed Flask Flask-SQLAlchemy Jinja2...
   ```
 
-Everything should be fine.
+  Everything should be fine.
 
 6. Copy some directory structure into the ```data``` directory.
 
@@ -37,7 +37,7 @@ Everything should be fine.
   $ source python-env/bin/activate
   ```
 
-This puts you inside the virtual environment. Your prompt is now preceded by ```(python-env)``` to let you know that the virtual environment is active.
+  This puts you inside the virtual environment. Your prompt is now preceded by ```(python-env)``` to let you know that the virtual environment is active.
 
 8. Run:
 
@@ -45,7 +45,7 @@ This puts you inside the virtual environment. Your prompt is now preceded by ```
   $ python application.py
   ``` 
 
-to start the built-in WSGI server.
+ to start the built-in WSGI server.
 
 9. Remember to deactivate your virtualenv by running ```deactivate``` when finished.
 
