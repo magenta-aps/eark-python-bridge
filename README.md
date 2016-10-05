@@ -45,7 +45,7 @@ The installation script assumes that we're running on Ubuntu/Debian. It installs
   $ python application.py
   ``` 
 
- to start the built-in WSGI server.
+  to start the built-in WSGI server.
 
 9. Remember to deactivate your virtualenv by running ```deactivate``` when finished.
 
