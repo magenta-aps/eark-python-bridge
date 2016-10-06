@@ -127,7 +127,7 @@ class FileManagerHandler(object):
                 error_text='Forbidden',
                 info='File is directory'
             )
-        return self.get(request, file_name)
+        return self.get(request, file_name, download=True)
 
     def commit(self, request):
         path = request.form['path']
@@ -188,7 +188,7 @@ class FileManagerHandler(object):
     def post(self, request):
         return self.dispatch(request)
 
-    def get(self, request, file_name):
+    def get(self, request, file_name, download=False):
         if file_name:
             path = application.app.config['DATA_DIR'] + file_name
             mime = magic.from_file(path, mime=True)
@@ -205,6 +205,10 @@ class FileManagerHandler(object):
                         file.close()
                         response = flask.make_response(content)
                         response.headers['Content-Type'] = mime
+                        # Force download
+                        if download:
+                            response.headers['Content-Disposition'] = \
+                                'attachment; filename=%s' % file_name
                         return response
             else:
                 return flask.jsonify(
