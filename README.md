@@ -55,7 +55,7 @@ Using the REST API, it is possible to list and manipulate files. In this section
 
 The following examples are using cli command ```curl```.
 
-### ```mode=list```
+### mode=list
 
 In ```list``` mode, ```path``` should be a valid sub path relative to the workspace. In addition, the file should be a directory. If the file is not found or the file is not of type directory, the server returns HTTP status code 404.
 
@@ -131,7 +131,7 @@ In the code this is implemented by running os.listdir() and catch os.error (whic
   }
   ```
 
-### ```mode=getcontent```
+### mode=getcontent
 
 In ```getcontent``` mode the path should point to a regular file. If no PDF preview of the file exists, it will be created and put inside the ```/preview/``` folder. If the call is successful, the server returns a JSON structure with two elements: ```download_url``` and ```preview_url```. This urls can be called with a subsequent HTTP GET request.
 
@@ -157,7 +157,7 @@ In ```getcontent``` mode the path should point to a regular file. If no PDF prev
   }
   ```
 
-### ```mode=edit```
+### mode=edit
 
 In ```edit``` mode the path should point to a regular file. If it points to a directory, the server responds with an 403 error and an explaining text. If the call is successful, the server responds with a header containing ```Content-Disposition: attachment;``` which should force most modern browsers to show the ```Save as...``` dialog and download the file. Serverside, the file is flagged as ```locked```. Subsequent calls to edit the file will return an error until the file is unlocked by a call in ```commit``` mode.
 
@@ -199,7 +199,7 @@ In ```edit``` mode the path should point to a regular file. If it points to a di
   }  
   ```
 
-### ```mode=commit```
+### mode=commit
 
 In ```commit``` mode the path should point to a regular file. In addition to ```mode``` and ```path```, there has to be a ```file``` parameter pointing to the local file. Committing a file that is not locked triggers an error.
 
@@ -239,7 +239,7 @@ In ```commit``` mode the path should point to a regular file. In addition to ```
   }
   ```
 
-### ```mode=delete```
+### mode=delete
 
 In ```delete``` mode the path should point to a regular file. If the file is a directory, an error is returned.
 
