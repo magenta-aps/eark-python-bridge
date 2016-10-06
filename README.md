@@ -201,7 +201,7 @@ In ```edit``` mode the path should point to a regular file. If it points to a di
 
 ### ```mode=commit```
 
-In ```commit``` mode the path should point to a regular file. In addition to ```mode``` and ```path```, there has to be a ```file``` parameter pointing to the local file. Committing a file that is not locked trickers an error.
+In ```commit``` mode the path should point to a regular file. In addition to ```mode``` and ```path```, there has to be a ```file``` parameter pointing to the local file. Committing a file that is not locked triggers an error.
 
 #### Commit file
 
