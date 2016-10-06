@@ -65,7 +65,7 @@ class FileManagerHandler(object):
     def get_content(self, request):
         path = self.translate_path(request.form['path'])
         # Only do anything if the requested file exists. Otherwise: 404
-        if os.path.exists(path):
+        if os.path.exists(path) and not os.path.isdir(path):
             checksum = self._sha256sum(path)
             mime = magic.from_file(path, mime=True)
             filename_wo_ext = os.path.splitext(os.path.split(path)[1])[0]
