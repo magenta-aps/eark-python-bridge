@@ -2,6 +2,7 @@
 
 import datetime
 import hashlib
+import json
 import urllib
 import posixpath
 import flask
@@ -10,8 +11,9 @@ import magic
 import subprocess
 import shutil
 
+import xmltodict
 from werkzeug.utils import secure_filename
-
+import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
 
@@ -175,6 +177,16 @@ class FileManagerHandler(object):
                 info='File was not found'
             )
 
+    def get_info(self, request):
+        path = request.form['path']
+        namespace = '{http://ead3.archivists.org/schema/}'
+        tree = ET.parse('%smetadata/descriptive/ead.xml' % application.app
+                        .config['DATA_DIR'])
+        did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
+                                % (namespace, namespace, path))
+        o = xmltodict.parse(ET.tostring(did_list[0]))
+        return json.dumps(o)
+
     # -*- endblock -*- #
 
     modes = {
@@ -183,6 +195,7 @@ class FileManagerHandler(object):
         'edit': edit,
         'commit': commit,
         'delete': delete,
+        'getinfo': get_info,
     }
 
     def post(self, request):
