@@ -189,7 +189,7 @@ class FileManagerHandler(object):
 
     # -*- endblock -*- #
 
-    modes = {
+    actions = {
         'list': list,
         'getcontent': get_content,
         'edit': edit,
@@ -237,8 +237,8 @@ class FileManagerHandler(object):
         :param request:
         :return:
         """
-        mode = request.form['mode'].lower()
-        func = self.modes[mode].__get__(self, type(self))
+        action = request.form['action'].lower()
+        func = self.actions[action].__get__(self, type(self))
         return func(request)
 
     def _get_file_type(self, fullpath):

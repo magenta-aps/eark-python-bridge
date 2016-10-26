@@ -51,19 +51,19 @@ The installation script assumes that we're running on Ubuntu/Debian. It installs
 
 ## Using the REST API
 
-Using the REST API, it is possible to list and manipulate files. In this section the supported operations are described. In general, all operations are executed using the HTTP POST method with two parameters ```mode``` and ```path```. ```mode``` should be one of ```list```, ```getcontent```, ```edit```, ```commit```, ```delete```. ```path``` should be a valid sub path relative to the workspace.
+Using the REST API, it is possible to list and manipulate files. In this section the supported operations are described. In general, all operations are executed using the HTTP POST method with two parameters ```action``` and ```path```. ```action``` should be one of ```list```, ```getcontent```, ```edit```, ```commit```, ```delete```. ```path``` should be a valid sub path relative to the workspace.
 
 The following examples are using cli command ```curl```.
 
-### mode=list
+### action=list
 
-In ```list``` mode, ```path``` should be a valid sub path relative to the workspace. In addition, the file should be a directory. If the file is not found or the file is not of type directory, the server returns HTTP status code 404.
+In ```list``` action, ```path``` should be a valid sub path relative to the workspace. In addition, the file should be a directory. If the file is not found or the file is not of type directory, the server returns HTTP status code 404.
 
 #### Examples:
 
 ##### List content of directory
   ```
-  $ curl --data "mode=list&path=/" localhost:8889
+  $ curl --data "action=list&path=/" localhost:8889
   {
     "children": [
       {
@@ -124,23 +124,23 @@ In ```list``` mode, ```path``` should be a valid sub path relative to the worksp
 In the code this is implemented by running os.listdir() and catch os.error (which may be either "file not found" or an error trying to list children of a regular file). 405 could be considered in the latter case if we want to be more specific.
 
   ```
-  $ curl --data "mode=list&path=/foo.txt" localhost:8889
+  $ curl --data "action=list&path=/foo.txt" localhost:8889
   {
     "error": 404, 
     "error_text": "Not Found"
   }
   ```
 
-### mode=getcontent
+### action=getcontent
 
-In ```getcontent``` mode the path should point to a regular file. If no PDF preview of the file exists, it will be created and put inside the ```/preview/``` folder. If the call is successful, the server returns a JSON structure with two elements: ```download_url``` and ```preview_url```. This urls can be called with a subsequent HTTP GET request.
+In ```getcontent``` action the path should point to a regular file. If no PDF preview of the file exists, it will be created and put inside the ```/preview/``` folder. If the call is successful, the server returns a JSON structure with two elements: ```download_url``` and ```preview_url```. This urls can be called with a subsequent HTTP GET request.
 
 #### Examples:
 
 ##### Get content of file
 
   ```
-  $ curl --data "mode=getcontent&path=/foo.txt" localhost:8889
+  $ curl --data "action=getcontent&path=/foo.txt" localhost:8889
   {
     "download_url": "http://localhost:8889/foo.txt", 
     "preview_url": "http://localhost:8889/preview/9f3cc873982623e10718f688753ecf78475b35fa7e48326aa688fc5ecfc82f2e"
@@ -150,23 +150,23 @@ In ```getcontent``` mode the path should point to a regular file. If no PDF prev
 ##### Get content of file of type directory (error)
 
   ```
-  $ curl --data "mode=list&path=/" localhost:8889
+  $ curl --data "action=list&path=/" localhost:8889
   {
     "error": 404, 
     "error_text": "Not Found"
   }
   ```
 
-### mode=edit
+### action=edit
 
-In ```edit``` mode the path should point to a regular file. If it points to a directory, the server responds with an 403 error and an explaining text. If the call is successful, the server responds with a header containing ```Content-Disposition: attachment;``` which should force most modern browsers to show the ```Save as...``` dialog and download the file. Serverside, the file is flagged as ```locked```. Subsequent calls to edit the file will return an error until the file is unlocked by a call in ```commit``` mode.
+In ```edit``` action the path should point to a regular file. If it points to a directory, the server responds with an 403 error and an explaining text. If the call is successful, the server responds with a header containing ```Content-Disposition: attachment;``` which should force most modern browsers to show the ```Save as...``` dialog and download the file. Serverside, the file is flagged as ```locked```. Subsequent calls to edit the file will return an error until the file is unlocked by a call in ```commit``` action.
 
 #### Examples:
 
 ##### Edit a file
 
   ```
-  $ curl -i --data "mode=edit&path=/foo.txt" localhost:8889
+  $ curl -i --data "action=edit&path=/foo.txt" localhost:8889
   HTTP/1.0 200 OK
   Content-Type: text/plain
   Content-Length: 54
@@ -180,7 +180,7 @@ In ```edit``` mode the path should point to a regular file. If it points to a di
 ##### Edit a locked file (error)
 
   ```
-  $ curl --data "mode=edit&path=/foo.txt" localhost:8889
+  $ curl --data "action=edit&path=/foo.txt" localhost:8889
   {
     "error": 403, 
     "error_text": "Forbidden", 
@@ -191,7 +191,7 @@ In ```edit``` mode the path should point to a regular file. If it points to a di
 ##### Edit a directory (error)
 
   ```
-  $ curl --data "mode=edit&path=/" localhost:8889
+  $ curl --data "action=edit&path=/" localhost:8889
   {
     "error": 403, 
     "error_text": "Forbidden", 
@@ -199,14 +199,14 @@ In ```edit``` mode the path should point to a regular file. If it points to a di
   }  
   ```
 
-### mode=commit
+### action=commit
 
-In ```commit``` mode the path should point to a regular file. In addition to ```mode``` and ```path```, there has to be a ```file``` parameter pointing to the local file. Committing a file that is not locked triggers an error.
+In ```commit``` action the path should point to a regular file. In addition to ```action``` and ```path```, there has to be a ```file``` parameter pointing to the local file. Committing a file that is not locked triggers an error.
 
 #### Commit file
 
   ```
-  $ curl -i -F "mode=commit" -F "path=/foo.txt" -F "file=@/tmp/foo.txt" localhost:8889
+  $ curl -i -F "action=commit" -F "path=/foo.txt" -F "file=@/tmp/foo.txt" localhost:8889
   HTTP/1.1 100 Continue
 
   HTTP/1.0 200 OK
@@ -223,7 +223,7 @@ In ```commit``` mode the path should point to a regular file. In addition to ```
 #### Commit non-locked file (error)
 
   ```
-  $ curl -i -F "mode=commit" -F "path=/foo.txt" -F "file=@/tmp/foo.txt" localhost:8889
+  $ curl -i -F "action=commit" -F "path=/foo.txt" -F "file=@/tmp/foo.txt" localhost:8889
   HTTP/1.1 100 Continue
 
   HTTP/1.0 200 OK
@@ -239,14 +239,14 @@ In ```commit``` mode the path should point to a regular file. In addition to ```
   }
   ```
 
-### mode=delete
+### action=delete
 
-In ```delete``` mode the path should point to a regular file. If the file is a directory, an error is returned.
+In ```delete``` action the path should point to a regular file. If the file is a directory, an error is returned.
 
 #### Delete file
 
   ```
-  $ curl -i --data "mode=delete&path=/delete.txt" localhost:8889
+  $ curl -i --data "action=delete&path=/delete.txt" localhost:8889
   HTTP/1.0 200 OK
   Content-Type: application/json
   Content-Length: 22
@@ -261,7 +261,7 @@ In ```delete``` mode the path should point to a regular file. If the file is a d
 #### Delete directory (error)
 
   ```
-  $ curl -i --data "mode=delete&path=/del" localhost:8889
+  $ curl -i --data "action=delete&path=/del" localhost:8889
   HTTP/1.0 200 OK
   Content-Type: application/json
   Content-Length: 82
