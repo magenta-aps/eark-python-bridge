@@ -187,6 +187,81 @@ class FileManagerHandler(object):
         o = xmltodict.parse(ET.tostring(did_list[0]))
         return json.dumps(o)
 
+    def copy(self, request):
+        src = self.translate_path(request.form['source'])
+        dst = self.translate_path(request.form['destination'])
+        if os.path.isfile(src):
+            locked_file = LockedFile.query.filter_by(path=src).first()
+            # File was locked for editing...
+            if locked_file:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File is locked for editing'
+                )
+            try:
+                shutil.copy(src, dst)
+            except IOError:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='Error while copying file'
+                )
+            return flask.jsonify(
+                success=True,
+            )
+        else:
+            return flask.jsonify(
+                error=404,
+                error_text='Not Found',
+                info='File was not found'
+            )
+
+    def move(self, request):
+        src = self.translate_path(request.form['source'])
+        dst = self.translate_path(request.form['destination'])
+        if os.path.isfile(src):
+            locked_file = LockedFile.query.filter_by(path=src).first()
+            # File was locked for editing...
+            if locked_file:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='File is locked for editing'
+                )
+            try:
+                shutil.move(src, dst)
+            except IOError:
+                return flask.jsonify(
+                    error=403,
+                    error_text='Forbidden',
+                    info='Error while moving file'
+                )
+            return flask.jsonify(
+                success=True,
+            )
+        else:
+            return flask.jsonify(
+                error=404,
+                error_text='Not Found',
+                info='File was not found'
+            )
+
+    def mkdir(self, request):
+        abs_path = self.translate_path(request.form['path'])
+        # File was locked for editing...
+        try:
+            os.mkdir(abs_path)
+        except OSError:
+            return flask.jsonify(
+                error=403,
+                error_text='Forbidden',
+                info='Directory already exists'
+            )
+        return flask.jsonify(
+            success=True,
+        )
+
     # -*- endblock -*- #
 
     actions = {
@@ -196,6 +271,9 @@ class FileManagerHandler(object):
         'commit': commit,
         'delete': delete,
         'getinfo': get_info,
+        'copy': copy,
+        'move': move,
+        'mkdir': mkdir,
     }
 
     def post(self, request):
