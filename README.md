@@ -275,4 +275,33 @@ In ```delete``` action the path should point to a regular file. If the file is a
   }
   ```
 
+### action=getinfo
+
+In ```getinfo``` the path should point to the SIP and ```href``` should be a href attribute of a dao element inside the EAD.xml.
+
+#### Get info about SIP
+
+  ```
+  $ curl -i --data "action=getinfo&path=/c4de7aca-e227-481a-a51b-c384bba5e943&href=file:../../representations/rep1/repA136.doc" localhost:8889
+  HTTP/1.0 200 OK
+  Content-Type: text/html; charset=utf-8
+  Content-Length: 779
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Tue, 01 Nov 2016 10:10:53 GMT
+
+  {"ns0:did": {"@xmlns:ns0": "http://ead3.archivists.org/schema/", "ns0:unitid": {"@localtype": "current", "#text": "EAA.123-2-1-2-1"}, "ns0:unittitle": "Report 01", "ns0:unitdate": {"@datechar": "created", "#text": "20.01.2008"}, "ns0:abstract": "Report No. 3", "ns0:physdescstructured": {"@coverage": "whole", "@physdescstructuredtype": "spaceoccupied", "ns0:quantity": "0.0138", "ns0:unittype": "MB"}, "ns0:daoset": {"@label": "Digital Objects", "ns0:dao": [{"@daotype": "borndigital", "@href": "file:../../representations/rep1/repA136.doc", "@id": "e43eba5e-60d6-4c7f-966c-b7ca7d03cf70", "@linktitle": "repA136.doc"}, {"@daotype": "derived", "@href": "file:../../representations/rep2/repA136.pdf", "@id": "db56629c-c703-40e8-822a-687bb435b6d0", "@linktitle": "repA136.pdf"}]}}}  
+  ```
+
+### action=copy
+
+Todo
+
+### action=move
+
+Todo
+
+### action=mkdir
+
+Todo
+
 Happy hacking!
