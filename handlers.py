@@ -180,7 +180,7 @@ class FileManagerHandler(object):
     def get_info(self, request):
         path = request.form['path']
         namespace = '{http://ead3.archivists.org/schema/}'
-        tree = ET.parse('%smetadata/descriptive/ead.xml' % application.app
+        tree = ET.parse('%smetadata/descriptive/EAD.xml' % application.app
                         .config['DATA_DIR'])
         did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
                                 % (namespace, namespace, path))
