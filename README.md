@@ -277,12 +277,12 @@ In ```delete``` action the path should point to a regular file. If the file is a
 
 ### action=getinfo
 
-In ```getinfo``` the path should point to the SIP and ```href``` should be a href attribute of a dao element inside the EAD.xml.
+In ```getinfo``` the path should be the path element from a data file.
 
 #### Get info about SIP
 
   ```
-  $ curl -i --data "action=getinfo&path=/c4de7aca-e227-481a-a51b-c384bba5e943&href=file:../../representations/rep1/repA136.doc" localhost:8889
+  $ curl -i --data "action=getinfo&path=/c4de7aca-e227-481a-a51b-c384bba5e943/representations/rep1/data/repA136.doc" localhost:8889
   HTTP/1.0 200 OK
   Content-Type: text/html; charset=utf-8
   Content-Length: 779

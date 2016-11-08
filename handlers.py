@@ -179,9 +179,11 @@ class FileManagerHandler(object):
 
     def get_info(self, request):
         path = self.translate_path(request.form['path'])
-        href = request.form['href']
+        parts = path.partition('/representations')
+        ip = parts[0]
+        href = 'file:../..' + parts[1] + parts[2]
         namespace = '{http://ead3.archivists.org/schema/}'
-        tree = ET.parse('%s/metadata/descriptive/EAD.xml' % path)
+        tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
         did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
                                 % (namespace, namespace, href))
         o = xmltodict.parse(ET.tostring(did_list[0]))
