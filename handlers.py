@@ -10,6 +10,8 @@ import os
 import magic
 import subprocess
 import shutil
+import sys
+import tarfile
 
 import xmltodict
 from werkzeug.utils import secure_filename
@@ -251,7 +253,6 @@ class FileManagerHandler(object):
 
     def mkdir(self, request):
         abs_path = self.translate_path(request.form['path'])
-        # File was locked for editing...
         try:
             os.mkdir(abs_path)
         except OSError:
@@ -260,6 +261,25 @@ class FileManagerHandler(object):
                 error_text='Forbidden',
                 info='Directory already exists'
             )
+        return flask.jsonify(
+            success=True,
+        )
+
+    def untar(self, request):
+        abs_path = self.translate_path(request.form['path'])
+        try:
+            tar = tarfile.open(abs_path)
+            tar.extractall(path=application.app.config['UNTAR_DIR'])
+            tar.close()
+        except (ValueError, tarfile.ReadError, tarfile.CompressionError):
+            return flask.jsonify(
+                error=403,
+                error_text='Forbidden',
+                info='Error opening tar file'
+            )
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+            raise
         return flask.jsonify(
             success=True,
         )
@@ -276,6 +296,7 @@ class FileManagerHandler(object):
         'copy': copy,
         'move': move,
         'mkdir': mkdir,
+        'untar': untar,
     }
 
     def post(self, request):
