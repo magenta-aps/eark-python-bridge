@@ -278,8 +278,11 @@ class FileManagerHandler(object):
                 info='Error opening tar file'
             )
         except:
-            print "Unexpected error:", sys.exc_info()[0]
-            raise
+            return flask.jsonify(
+                error=500,
+                error_text='Internal Server Error',
+                info='Unexpected error in untar',
+            )
         return flask.jsonify(
             success=True,
         )
