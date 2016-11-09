@@ -179,17 +179,42 @@ class FileManagerHandler(object):
                 info='File was not found'
             )
 
+    def _get_href_variations(self, href):
+        # list of supported prefixes
+        prefixes = ['', 'file://', 'file:', 'file/']
+        variations = []
+        for prefix in prefixes:
+            variations.append(prefix + href.lstrip('/'))
+        return variations
+
     def get_info(self, request):
         path = self.translate_path(request.form['path'])
         parts = path.partition('/representations')
         ip = parts[0]
-        href = 'file:../..' + parts[1] + parts[2]
+        hrefs = self._get_href_variations(parts[1] + parts[2])
         namespace = '{http://ead3.archivists.org/schema/}'
         tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
-        did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
-                                % (namespace, namespace, href))
-        o = xmltodict.parse(ET.tostring(did_list[0]))
-        return json.dumps(o)
+        # regular file
+        for href in hrefs:
+            did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
+                                    % (namespace, namespace, href))
+            if did_list:
+                o = xmltodict.parse(ET.tostring(did_list[0]))
+                return json.dumps(o)
+        # no regular file - default to
+        did_list = tree.findall(
+            ".//%sc[@level='series']/%shead/%sptr[@href='%s']/../%sdid"
+                                % (namespace, namespace, namespace, href,
+                                   namespace)
+        )
+        if did_list:
+            o = xmltodict.parse(ET.tostring(did_list[0]))
+            return json.dumps(o)
+        return flask.jsonify(
+            error=404,
+            error_text='Not Found',
+            info='File was not found'
+        )
 
     def copy(self, request):
         src = self.translate_path(request.form['source'])
