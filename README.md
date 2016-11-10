@@ -294,14 +294,80 @@ In ```getinfo``` the path should be the path element from a data file.
 
 ### action=copy
 
-Todo
+In ```copy``` two arguments are mandatory ```source``` and ```destination```. If the call is successful, the ```source``` is copied to ```destination```.  
+
+#### Copy ```source``` to ```destination```
+
+  ```
+  $ curl -i --data "action=copy&source=/c4de7aca-e227-481a-a51b-c384bba5e943/tar.tar&destination=/c4de7aca-e227-481a-a51b-c384bba5e943/tar2.tar" localhost:8889
+  HTTP/1.0 200 OK
+  Content-Type: application/json
+  Content-Length: 22
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Thu, 10 Nov 2016 08:27:08 GMT
+
+  {
+    "success": true
+  }  
+  ```
 
 ### action=move
 
-Todo
+In ```move``` two arguments are mandatory ```source``` and ```destination```. If the call is successful, the ```source``` is moved to ```destination```.  
+
+#### Move ```source``` to ```destination```
+
+  ```
+  $ curl -i --data "action=move&source=/c4de7aca-e227-481a-a51b-c384bba5e943/tar2.tar&destination=/c4de7aca-e227-481a-a51b-c384bba5e943/tar3.tar" localhost:8889
+  HTTP/1.0 200 OK
+  Content-Type: application/json
+  Content-Length: 22
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Thu, 10 Nov 2016 08:39:20 GMT
+
+  {
+    "success": true
+  }
+  ```  
 
 ### action=mkdir
 
-Todo
+In ```mkdir``` action the path should point to the new directory that we want created.  
+
+#### Make a new direcetory
+
+  ```
+  $ curl -i --data "action=mkdir&path=/c4de7aca-e227-481a-a51b-c384bba5e943/foo" localhost:8889HTTP/1.0 200 OK
+  Content-Type: application/json
+  Content-Length: 22
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Thu, 10 Nov 2016 08:44:44 GMT
+
+  {
+    "success": true
+  }
+  
+  ```  
+
+
+### action=untar
+
+In ```untar``` action the path should point to a regular tar file (Not compressed) that should be extracted. The file will be extracted in the directory specified by the UNTAR_DIR variable in local_config.py
+
+#### Extract tar file
+
+  ```
+  $ curl -i --data "action=untar&path=/c4de7aca-e227-481a-a51b-c384bba5e943/tar.tar" localhost:8889
+  HTTP/1.0 200 OK
+  Content-Type: application/json
+  Content-Length: 22
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Thu, 10 Nov 2016 08:53:52 GMT
+
+  {
+    "success": true
+  }  
+  ```  
+
 
 Happy hacking!
