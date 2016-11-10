@@ -201,19 +201,10 @@ class FileManagerHandler(object):
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
-        # no regular file - default to
-        did_list = tree.findall(
-            ".//%sc[@level='series']/%shead/%sptr[@href='%s']/../%sdid"
-                                % (namespace, namespace, namespace, href,
-                                   namespace)
-        )
-        if did_list:
-            o = xmltodict.parse(ET.tostring(did_list[0]))
-            return json.dumps(o)
         return flask.jsonify(
             error=404,
             error_text='Not Found',
-            info='File was not found'
+            info='No metadata associated to this element'
         )
 
     def copy(self, request):
