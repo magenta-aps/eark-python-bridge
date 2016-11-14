@@ -203,8 +203,8 @@ class FileManagerHandler(object):
                 return json.dumps(o)
         # directory
         for href in hrefs:
-            did_list = tree.findall(".//%sc[@base='%s']/did"
-                                    % (namespace, href))
+            did_list = tree.findall(".//%sc[@base='%s']/%sdid"
+                                    % (namespace, href, namespace))
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
