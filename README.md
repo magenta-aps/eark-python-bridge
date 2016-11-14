@@ -369,5 +369,42 @@ In ```untar``` action the path should point to a regular tar file (Not compresse
   }  
   ```  
 
+### action=gettree
+
+In ```gettree``` action the path should be a valid sub path relative to the workspace. In addition, the file should be a directory. If the file is not found or the file is not of type directory, the server returns HTTP status code 404.
+
+#### Calling ```gettree```
+
+  ```
+  $ curl -is --data "action=gettree&path=/c4de7aca-e227-481a-a51b-c384bba5e943/representations/rep2" localhost:8889
+  HTTP/1.0 200 OK
+  Content-Type: application/json
+  Content-Length: 407
+  Server: Werkzeug/0.11.10 Python/2.7.6
+  Date: Mon, 14 Nov 2016 17:37:36 GMT
+
+  {
+    "/c4de7aca-e227-481a-a51b-c384bba5e943/": {
+      "children": [
+        "representations", 
+        "metadata", 
+        "schemas", 
+        "foo", 
+        "documentation"
+      ]
+    }, 
+    "/c4de7aca-e227-481a-a51b-c384bba5e943/representations/": {
+      "children": [
+        "rep2", 
+        "rep1"
+      ]
+    }, 
+    "/c4de7aca-e227-481a-a51b-c384bba5e943/representations/rep2/": {
+      "children": [
+        "data"
+      ]
+    }
+  }
+  ```  
 
 Happy hacking!

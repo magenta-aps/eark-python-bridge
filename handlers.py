@@ -313,6 +313,12 @@ class FileManagerHandler(object):
 
     def get_tree(self, request):
         abs_path = self.translate_path(request.form['path'])
+        # non-existing path
+        if not os.path.exists(abs_path) and not os.path.isdir(abs_path):
+            return flask.jsonify(
+                error=404,
+                error_text='Not Found'
+            )
         data_dir = application.app.config['DATA_DIR']
         path = '/'
         json = {}
@@ -325,7 +331,10 @@ class FileManagerHandler(object):
         if os.path.isdir(abs_path):
             for element in path_list:
                 path += element + '/'
-                json[path] = {'children': [x for x in os.listdir(data_dir + path) if os.path.isdir(os.path.join(data_dir + path, x))]}
+                json[path] = \
+                    {'children': [x for x in os.listdir(data_dir + path)
+                                  if os.path.isdir(
+                            os.path.join(data_dir + path, x))]}
             return flask.jsonify(json)
         else:
             return flask.jsonify(
