@@ -311,6 +311,29 @@ class FileManagerHandler(object):
             success=True,
         )
 
+    def get_tree(self, request):
+        abs_path = self.translate_path(request.form['path'])
+        data_dir = application.app.config['DATA_DIR']
+        path = '/'
+        json = {}
+        path_list = request.form['path'].split('/')
+        # remove empty string (first element)
+        del path_list[0]
+        # remove empty string (last element) if it exists
+        if path_list[-1] == u'':
+            del path_list[-1]
+        if os.path.isdir(abs_path):
+            for element in path_list:
+                path += element + '/'
+                json[path] = {'children': [x for x in os.listdir(data_dir + path) if os.path.isdir(os.path.join(data_dir + path, x))]}
+            return flask.jsonify(json)
+        else:
+            return flask.jsonify(
+                error=403,
+                error_text='Forbidden',
+                info='File is not a directory'
+            )
+
     # -*- endblock -*- #
 
     actions = {
@@ -324,6 +347,7 @@ class FileManagerHandler(object):
         'move': move,
         'mkdir': mkdir,
         'untar': untar,
+        'gettree': get_tree,
     }
 
     def post(self, request):
