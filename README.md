@@ -51,7 +51,7 @@ The installation script assumes that we're running on Ubuntu/Debian. It installs
 
 ## Using the REST API
 
-Using the REST API, it is possible to list and manipulate files. In this section the supported operations are described. In general, all operations are executed using the HTTP POST method with two parameters ```action``` and ```path```. ```action``` should be one of ```list```, ```getcontent```, ```edit```, ```commit```, ```delete```. ```path``` should be a valid sub path relative to the workspace.
+Using the REST API, it is possible to list and manipulate files. In this section the supported operations are described. In general, all operations are executed using the HTTP POST method with two parameters ```action``` and ```path```. ```action``` should be one of ```list```, ```getcontent```, ```edit```, ```commit```, ```delete```, ```getinfo```, ```copy```, ```move```, ```mkdir```, ```untar```, ```gettree```. ```path``` should be a valid sub path relative to the workspace.
 
 The following examples are using cli command ```curl```.
 
