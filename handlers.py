@@ -201,6 +201,14 @@ class FileManagerHandler(object):
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
+        # directory
+        for href in hrefs:
+            did_list = tree.findall(".//%sc[@base='%s']/did"
+                                    % (namespace, href))
+            if did_list:
+                o = xmltodict.parse(ET.tostring(did_list[0]))
+                return json.dumps(o)
+        # fallback
         return flask.jsonify(
             error=404,
             error_text='Not Found',
