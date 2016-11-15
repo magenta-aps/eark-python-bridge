@@ -194,9 +194,16 @@ class FileManagerHandler(object):
         hrefs = self._get_href_variations(parts[1] + parts[2])
         namespace = '{http://ead3.archivists.org/schema/}'
         tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
-        # regular file
+        # regular file - daoset
         for href in hrefs:
             did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
+                                    % (namespace, namespace, href))
+            if did_list:
+                o = xmltodict.parse(ET.tostring(did_list[0]))
+                return json.dumps(o)
+        # regular file - no daoset
+        for href in hrefs:
+            did_list = tree.findall(".//%sdid/%sdao[@href='%s']/.."
                                     % (namespace, namespace, href))
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
