@@ -10,7 +10,6 @@ import os
 import magic
 import subprocess
 import shutil
-import sys
 import tarfile
 
 import xmltodict
@@ -18,6 +17,7 @@ from werkzeug.utils import secure_filename
 import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
+from enum import Enum
 
 
 class FileManagerHandler(object):
@@ -35,9 +35,19 @@ class FileManagerHandler(object):
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
 
+
 # -*- Dispatched functions need to go here -*- #
     def list(self, request):
-        path = self.translate_path(request.form['path'])
+        # Used to determine where we should be browsing
+        OrderStatusEnum = Enum(open='WORKING_DIR', ready='DATA_DIR', closed='DATA_DIR')
+
+        if request.form['orderStatus'] :
+            orderStatus = request.form['orderStatus'].lower()
+            print '====>(1) Hurrah!! orderStatus detected: ', orderStatus
+            path = self.translate_path(request.form['path'], OrderStatusEnum[orderStatus])
+        else:
+            path = self.translate_path(request.form['path'])
+
         try:
             list = os.listdir(path)
         except os.error:
@@ -299,8 +309,9 @@ class FileManagerHandler(object):
     def untar(self, request):
         abs_path = self.translate_path(request.form['path'])
         try:
-            tar = tarfile.open(abs_path)
-            tar.extractall(path=application.app.config['UNTAR_DIR'])
+            tar = tarfile.open(abs_path+".tar")
+            print ("The file path is : ", abs_path+".tar")
+            tar.extractall(path=application.app.config['DATA_DIR'])
             tar.close()
         except (ValueError, tarfile.ReadError, tarfile.CompressionError):
             return flask.jsonify(
@@ -451,7 +462,7 @@ class FileManagerHandler(object):
             )
 
     def _upload_file(self, request):
-        path = application.app.config['DATA_DIR']
+        path = application.app.config['WORKING_DIR']
         if request.method == 'POST':
             # check if the post request has the file part
             if 'file' not in request.files:
@@ -476,7 +487,7 @@ class FileManagerHandler(object):
                     success=True,
                 )
 
-    def translate_path(self, path):
+    def translate_path(self, path, *directory_root):
         """
         This was stolen from SimpleHTTPServer.translate_path()
         Translate a /-separated PATH to the local filename syntax.
@@ -494,7 +505,11 @@ class FileManagerHandler(object):
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
         words = filter(None, words)
-        path = application.app.config['DATA_DIR']
+        if directory_root :
+            path = application.app.config[directory_root[0]]
+            print '====>(2) Translate_path resolving the directory to: ', path
+        else:
+            path = application.app.config['DATA_DIR']
         for word in words:
             drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)

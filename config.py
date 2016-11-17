@@ -12,7 +12,8 @@ DATA_DIR = BASE_DIR + '/data/'
 PREVIEW_DIR = BASE_DIR + '/preview/'
 
 # Database
-SQLALCHEMY_DATABASE_URI = 'sqlite:///%s/data.db' % BASE_DIR
+#SQLALCHEMY_DATABASE_URI = 'sqlite:///%s/data.db' % BASE_DIR
+SQLALCHEMY_DATABASE_URI = 'mysql://eark:eark@localhost/eark_ipViewer'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 DEBUG = True
