@@ -17,8 +17,6 @@ from werkzeug.utils import secure_filename
 import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
-from enum import Enum
-
 
 class FileManagerHandler(object):
     MIME_PDF = 'application/pdf'
@@ -39,12 +37,12 @@ class FileManagerHandler(object):
 # -*- Dispatched functions need to go here -*- #
     def list(self, request):
         # Used to determine where we should be browsing
-        OrderStatusEnum = Enum(open='WORKING_DIR', ready='DATA_DIR', closed='DATA_DIR')
+        OrderStatusMap ={ 'open':'WORKING_DIR', 'ready':'DATA_DIR', 'closed':'DATA_DIR' }
 
         if request.form['orderStatus'] :
             orderStatus = request.form['orderStatus'].lower()
             print '====>(1) Hurrah!! orderStatus detected: ', orderStatus
-            path = self.translate_path(request.form['path'], OrderStatusEnum[orderStatus])
+            path = self.translate_path(request.form['path'], OrderStatusMap[orderStatus])
         else:
             path = self.translate_path(request.form['path'])
 
