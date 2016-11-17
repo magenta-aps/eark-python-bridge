@@ -27,6 +27,3 @@ sqlite3 $DATABASE_FILE ".databases"
 # HACK END
 python init_db.py
 deactivate # Step out of virtualenv
-
-# Make directories
-mkdir data preview

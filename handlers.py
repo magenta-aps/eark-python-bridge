@@ -329,37 +329,23 @@ class FileManagerHandler(object):
             success=True,
         )
 
-    def get_tree(self, request):
-        abs_path = self.translate_path(request.form['path'])
-        # non-existing path
-        if not os.path.exists(abs_path) and not os.path.isdir(abs_path):
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found'
-            )
+    def _path_to_dict(self, path):
+        d = {}
         data_dir = application.app.config['DATA_DIR']
-        path = '/'
-        json = {}
-        path_list = request.form['path'].split('/')
-        # remove empty string (first element)
-        del path_list[0]
-        # remove empty string (last element) if it exists
-        if path_list[-1] == u'':
-            del path_list[-1]
+        abs_path = data_dir + path
         if os.path.isdir(abs_path):
-            for element in path_list:
-                path += element + '/'
-                json[path] = \
-                    {'children': [x for x in os.listdir(data_dir + path)
-                                  if os.path.isdir(
-                            os.path.join(data_dir + path, x))]}
-            return flask.jsonify(json)
-        else:
-            return flask.jsonify(
-                error=403,
-                error_text='Forbidden',
-                info='File is not a directory'
-            )
+            d[os.path.basename(path)] = {
+                'children': [
+                    self._path_to_dict(os.path.join(path, x))
+                    for x in os.listdir(abs_path)
+                    if os.path.isdir(os.path.join(abs_path, x))]
+            }
+        return d
+
+    def get_tree(self, request):
+        path = request.form['path']
+        d = self._path_to_dict(path)
+        return flask.jsonify(d)
 
     # -*- endblock -*- #
 
