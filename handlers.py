@@ -21,14 +21,10 @@ from models import LockedFile
 class FileManagerHandler(object):
     MIME_PDF = 'application/pdf'
     MIME_TXT = 'text/plain'
-
     MIME_JPG = 'image/jpeg'
     MIME_PNG = 'image/png'
-
     MIME_DOC = 'application/msword'
-    MIME_DOCX = 'application/vnd.openxmlformats-officedocument' \
-                '.wordprocessingml.document'
-
+    MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     MIME_ODF = 'application/vnd.oasis.opendocument.text'
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
@@ -36,16 +32,7 @@ class FileManagerHandler(object):
 
 # -*- Dispatched functions need to go here -*- #
     def list(self, request):
-        # Used to determine where we should be browsing
-        OrderStatusMap ={ 'open':'WORKING_DIR', 'ready':'DATA_DIR', 'closed':'DATA_DIR' }
-
-        if request.form['orderStatus'] :
-            orderStatus = request.form['orderStatus'].lower()
-            print '====>(1) Hurrah!! orderStatus detected: ', orderStatus
-            path = self.translate_path(request.form['path'], OrderStatusMap[orderStatus])
-        else:
-            path = self.translate_path(request.form['path'])
-
+        path = self._resolve_directory(request)
         try:
             list = os.listdir(path)
         except os.error:
@@ -307,8 +294,8 @@ class FileManagerHandler(object):
     def untar(self, request):
         abs_path = self.translate_path(request.form['path'])
         try:
-            tar = tarfile.open(abs_path+".tar")
-            print ("The file path is : ", abs_path+".tar")
+            tar = tarfile.open(abs_path + ".tar")
+            print ("The file path is : ", abs_path + ".tar")
             tar.extractall(path=application.app.config['DATA_DIR'])
             tar.close()
         except (ValueError, tarfile.ReadError, tarfile.CompressionError):
@@ -341,7 +328,7 @@ class FileManagerHandler(object):
         return d
 
     def get_tree(self, request):
-        path = request.form['path']
+        path = self._resolve_directory(request)
         d = self._path_to_dict(path)
         return flask.jsonify(d)
 
@@ -471,6 +458,25 @@ class FileManagerHandler(object):
                     success=True,
                 )
 
+    def _resolve_directory(self, request):
+        """
+        This method is used to determine which directory to browse between the Working directory or the
+        data directory (where DIPS have been exploded).
+        For the method to work, the form in the request must contain an orderStatus property which is used
+        to determine where we should be browsing.
+        :param request:
+        :return:
+        """
+        orderStatusMap = {'open': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
+        if request.form['orderStatus']:
+            orderStatus = request.form['orderStatus'].lower()
+            print 'order status is: ', orderStatus
+            path = self.translate_path(request.form['path'], orderStatusMap[orderStatus])
+        else:
+            path = self.translate_path(request.form['path'])
+
+        return path
+
     def translate_path(self, path, *directory_root):
         """
         This was stolen from SimpleHTTPServer.translate_path()
@@ -489,11 +495,10 @@ class FileManagerHandler(object):
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
         words = filter(None, words)
-        if directory_root :
+        if directory_root:
             path = application.app.config[directory_root[0]]
-            print '====>(2) Translate_path resolving the directory to: ', path
         else:
-            path = application.app.config['DATA_DIR']
+            path = application.app.config['WORKING_DIR']
         for word in words:
             drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
@@ -502,4 +507,5 @@ class FileManagerHandler(object):
             path = os.path.join(path, word)
         # if trailing_slash:
         #     path += '/'
+        print '====>(2) Translate_path resolving the directory to: ', path
         return path
