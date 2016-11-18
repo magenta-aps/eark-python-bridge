@@ -316,8 +316,7 @@ class FileManagerHandler(object):
 
     def _path_to_dict(self, path):
         d = {}
-        data_dir = application.app.config['DATA_DIR']
-        abs_path = data_dir + path
+        abs_path = path
         if os.path.isdir(abs_path):
             d[os.path.basename(path)] = {
                 'children': [
