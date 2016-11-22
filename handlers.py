@@ -466,7 +466,7 @@ class FileManagerHandler(object):
         :param request:
         :return:
         """
-        orderStatusMap = {'open': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
+        orderStatusMap = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
         if request.form['orderStatus']:
             orderStatus = request.form['orderStatus'].lower()
             print 'order status is: ', orderStatus
