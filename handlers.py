@@ -7,6 +7,7 @@ import urllib
 import posixpath
 import flask
 import os
+import os.path
 import magic
 import subprocess
 import shutil
@@ -314,23 +315,47 @@ class FileManagerHandler(object):
             success=True,
         )
 
+
     def _path_to_dict(self, path, prefix_path):
+
         folders = path.split('/')[1:]
         current_path = os.path.join(prefix_path, folders[0])
-        tree = {'name': os.path.basename(current_path), 'path': current_path}
+        print current_path
+        tree = {'name': os.path.basename(current_path), 'path': '/' + os.path.relpath(current_path, prefix_path), 'type':'folder'}
         current_dict = tree
+        
         for i in range(len(folders)):
-            folders_in_current_path = [f for f in os.listdir(current_path) if os.path.isdir(os.path.join(current_path, f))]
-            if not len(folders_in_current_path) == 0:
+
+            if i < len(folders) - 1: 
+                items_in_current_path = [f for f in os.listdir(current_path) if os.path.isdir(os.path.join(current_path, f))]
+            else:
+                items_in_current_path = os.listdir(current_path)
+        
+            if not len(items_in_current_path) == 0:
                 children = []
-                for f in folders_in_current_path:
-                    name_path_dict = {'name': f, 'path': os.path.join(current_path, f)}
-                    if f == folders[i + 1]:
-                        d = name_path_dict 
-                    children.append(name_path_dict)
-                current_dict['children'] = children
-                current_dict = d
-                current_path = os.path.join(current_path, d['name'])
+                if i < len(folders) - 1:
+                    # Not at the leaf folder
+                    for f in items_in_current_path:
+                        relative_path = '/' + os.path.relpath(os.path.join(current_path, f), prefix_path)
+                        name_path_dict = {'name': f, 'path': relative_path, 'type': 'folder'}
+                        if f == folders[i + 1]:
+                            d = name_path_dict 
+                        children.append(name_path_dict)
+                    current_dict['children'] = children
+                    current_dict = d
+                    current_path = os.path.join(current_path, d['name'])
+                else:
+                    # At the leaf folder
+                    for f in items_in_current_path:
+                        abs_path = os.path.join(current_path, f)
+                        relative_path = '/' + os.path.relpath(abs_path, prefix_path)
+                        name_path_dict = {'name': f, 'path': relative_path}
+                        if os.path.isdir(abs_path):
+                            name_path_dict['type'] = 'folder'
+                        else:
+                            name_path_dict['type'] = 'file'
+                        children.append(name_path_dict)
+                    current_dict['children'] = children
         
         return tree
 
@@ -341,9 +366,16 @@ class FileManagerHandler(object):
         
         # Check if orderStatus is allowed
         if not orderStatus in FileManagerHandler.ORDERSTATUSMAP.keys():
-            return flask.jsonify({"success": False, 'message': 'orderStatus must be one of ' + ', '.join(FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
+            return flask.jsonify({'success': False, 'message': 'orderStatus must be one of ' + ', '.join(FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
+
+        prefix_path = application.app.config[FileManagerHandler.ORDERSTATUSMAP[orderStatus]]
         
-        d = self._path_to_dict(path, application.app.config[FileManagerHandler.ORDERSTATUSMAP[orderStatus]])
+        # Check that the path exists
+        abs_path = os.path.join(prefix_path, path[1:])
+        if not os.path.exists(abs_path):
+            return flask.jsonify({'success': False, 'message': 'The path \'' + path + '\' does not exists'}), 412
+        
+        d = self._path_to_dict(path, prefix_path)
         return flask.jsonify(d)
 
     # -*- endblock -*- #
