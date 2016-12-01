@@ -28,7 +28,7 @@ class FileManagerHandler(object):
     MIME_ODF = 'application/vnd.oasis.opendocument.text'
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
-
+    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
 
 # -*- Dispatched functions need to go here -*- #
     def list(self, request):
@@ -314,21 +314,36 @@ class FileManagerHandler(object):
             success=True,
         )
 
-    def _path_to_dict(self, path):
-        d = {}
-        abs_path = path
-        if os.path.isdir(abs_path):
-            d[os.path.basename(path)] = {
-                'children': [
-                    self._path_to_dict(os.path.join(path, x))
-                    for x in os.listdir(abs_path)
-                    if os.path.isdir(os.path.join(abs_path, x))]
-            }
-        return d
+    def _path_to_dict(self, path, prefix_path):
+        folders = path.split('/')[1:]
+        current_path = os.path.join(prefix_path, folders[0])
+        tree = {'name': os.path.basename(current_path), 'path': current_path}
+        current_dict = tree
+        for i in range(len(folders)):
+            folders_in_current_path = [f for f in os.listdir(current_path) if os.path.isdir(os.path.join(current_path, f))]
+            if not len(folders_in_current_path) == 0:
+                children = []
+                for f in folders_in_current_path:
+                    name_path_dict = {'name': f, 'path': os.path.join(current_path, f)}
+                    if f == folders[i + 1]:
+                        d = name_path_dict 
+                    children.append(name_path_dict)
+                current_dict['children'] = children
+                current_dict = d
+                current_path = os.path.join(current_path, d['name'])
+        
+        return tree
+
 
     def get_tree(self, request):
-        path = self._resolve_directory(request)
-        d = self._path_to_dict(path)
+        path = request.form['path']
+        orderStatus = request.form['orderStatus']
+        
+        # Check if orderStatus is allowed
+        if not orderStatus in FileManagerHandler.ORDERSTATUSMAP.keys():
+            return flask.jsonify({"success": False, 'message': 'orderStatus must be one of ' + ', '.join(FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
+        
+        d = self._path_to_dict(path, application.app.config[FileManagerHandler.ORDERSTATUSMAP[orderStatus]])
         return flask.jsonify(d)
 
     # -*- endblock -*- #
@@ -466,11 +481,11 @@ class FileManagerHandler(object):
         :param request:
         :return:
         """
-        orderStatusMap = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
+        
         if request.form['orderStatus']:
             orderStatus = request.form['orderStatus'].lower()
             print 'order status is: ', orderStatus
-            path = self.translate_path(request.form['path'], orderStatusMap[orderStatus])
+            path = self.translate_path(request.form['path'], FileManagerHandler.ORDERSTATUSMAP[orderStatus])
         else:
             path = self.translate_path(request.form['path'])
 
