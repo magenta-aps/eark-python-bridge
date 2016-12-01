@@ -1,0 +1,23 @@
+{
+	"root": {
+		"children": [
+			{
+				"name": "metadata",
+				"path": "dipID/metadata"
+			},
+			{
+				"name": "representations",
+				"path": "dipID/representations",
+				"children": [
+					{
+						"name": "rep1",
+						"path": "dipID/representations/rep1"
+						
+					}
+				
+				]
+			}
+		 ] 
+	}
+}
+

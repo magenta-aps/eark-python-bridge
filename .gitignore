@@ -6,3 +6,8 @@ preview/
 static/
 templates/
 data.db
+.project
+.pydevproject
+.settings/
+local_config.py
+
