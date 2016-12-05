@@ -19,6 +19,7 @@ import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
 
+
 class FileManagerHandler(object):
     MIME_PDF = 'application/pdf'
     MIME_TXT = 'text/plain'
@@ -29,9 +30,10 @@ class FileManagerHandler(object):
     MIME_ODF = 'application/vnd.oasis.opendocument.text'
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
-    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
+    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR',
+                      'closed': 'DATA_DIR'}
 
-# -*- Dispatched functions need to go here -*- #
+    # -*- Dispatched functions need to go here -*- #
     def list(self, request):
         path = self._resolve_directory(request)
         try:
@@ -63,15 +65,24 @@ class FileManagerHandler(object):
         return flask.jsonify(children=files)
 
     def get_content(self, request):
-        path = self.translate_path(request.form['path'])
+        rr_path = request.form['path']
+        path = self._resolve_directory(request)
+
         # Only do anything if the requested file exists. Otherwise: 404
         if os.path.exists(path) and not os.path.isdir(path):
             checksum = self._sha256sum(path)
             mime = magic.from_file(path, mime=True)
             filename_wo_ext = os.path.splitext(os.path.split(path)[1])[0]
-            filename = os.path.basename(path)
-            rel_path = 'preview/' + checksum
+            rel_path = 'preview/' + checksum + '.pdf'
             preview_path = application.app.config['PREVIEW_DIR'] + checksum
+            # Construct download path
+            if application.app.config['DATA_DIR'] in path:
+                download_path = 'dd' + rr_path
+            elif application.app.config['WORKING_DIR'] in path:
+                download_path = 'wd' + rr_path
+            else:
+                download_path = ''
+
             # We basically try to convert everything to PDFs and throw it in
             # the 'preview' directory unless it's already a PDF.
             #  Todo: Be more verbose about what went wrong if conversion fails?
@@ -80,12 +91,11 @@ class FileManagerHandler(object):
                 if mime == self.MIME_PDF:
                     success = self._copy_to_preview(path, preview_path)
                 else:
-                    success = self._create_preview(path, checksum,
-                                                   filename_wo_ext)
+                    success = self._create_preview(path, checksum, filename_wo_ext)
                 if success:
                     return flask.jsonify(
                         preview_url=request.host_url + urllib.quote(rel_path),
-                        download_url=request.host_url + urllib.quote(filename)
+                        download_url=request.host_url + urllib.quote(download_path)
                     )
                 else:
                     return flask.jsonify(
@@ -95,7 +105,7 @@ class FileManagerHandler(object):
             else:
                 return flask.jsonify(
                     preview_url=request.host_url + urllib.quote(rel_path),
-                    download_url=request.host_url + urllib.quote(filename)
+                    download_url=request.host_url + urllib.quote(download_path)
                 )
         else:
             return flask.jsonify(
@@ -315,22 +325,23 @@ class FileManagerHandler(object):
             success=True,
         )
 
-
     def _path_to_dict(self, path, prefix_path):
 
         folders = path.split('/')[1:]
         current_path = os.path.join(prefix_path, folders[0])
         print current_path
-        tree = {'name': os.path.basename(current_path), 'path': '/' + os.path.relpath(current_path, prefix_path), 'type':'folder'}
+        tree = {'name': os.path.basename(current_path), 'path': '/' + os.path.relpath(current_path, prefix_path),
+                'type': 'folder'}
         current_dict = tree
-        
+
         for i in range(len(folders)):
 
-            if i < len(folders) - 1: 
-                items_in_current_path = [f for f in os.listdir(current_path) if os.path.isdir(os.path.join(current_path, f))]
+            if i < len(folders) - 1:
+                items_in_current_path = [f for f in os.listdir(current_path) if
+                                         os.path.isdir(os.path.join(current_path, f))]
             else:
                 items_in_current_path = os.listdir(current_path)
-        
+
             if not len(items_in_current_path) == 0:
                 children = []
                 if i < len(folders) - 1:
@@ -339,7 +350,7 @@ class FileManagerHandler(object):
                         relative_path = '/' + os.path.relpath(os.path.join(current_path, f), prefix_path)
                         name_path_dict = {'name': f, 'path': relative_path, 'type': 'folder'}
                         if f == folders[i + 1]:
-                            d = name_path_dict 
+                            d = name_path_dict
                         children.append(name_path_dict)
                     current_dict['children'] = children
                     current_dict = d
@@ -356,25 +367,25 @@ class FileManagerHandler(object):
                             name_path_dict['type'] = 'file'
                         children.append(name_path_dict)
                     current_dict['children'] = children
-        
-        return tree
 
+        return tree
 
     def get_tree(self, request):
         path = request.form['path']
         orderStatus = request.form['orderStatus']
-        
+
         # Check if orderStatus is allowed
         if not orderStatus in FileManagerHandler.ORDERSTATUSMAP.keys():
-            return flask.jsonify({'success': False, 'message': 'orderStatus must be one of ' + ', '.join(FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
+            return flask.jsonify({'success': False, 'message': 'orderStatus must be one of ' + ', '.join(
+                FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
 
         prefix_path = application.app.config[FileManagerHandler.ORDERSTATUSMAP[orderStatus]]
-        
+
         # Check that the path exists
         abs_path = os.path.join(prefix_path, path[1:])
         if not os.path.exists(abs_path):
             return flask.jsonify({'success': False, 'message': 'The path \'' + path + '\' does not exists'}), 412
-        
+
         d = self._path_to_dict(path, prefix_path)
         return flask.jsonify(d)
 
@@ -462,7 +473,7 @@ class FileManagerHandler(object):
                 "-f",
                 "pdf",
                 "-o",
-                application.app.config['PREVIEW_DIR'] + checksum,
+                application.app.config['PREVIEW_DIR'] + checksum + '.pdf',
                 path
             ]
         )
@@ -513,7 +524,7 @@ class FileManagerHandler(object):
         :param request:
         :return:
         """
-        
+
         if request.form['orderStatus']:
             orderStatus = request.form['orderStatus'].lower()
             print 'order status is: ', orderStatus
@@ -555,3 +566,11 @@ class FileManagerHandler(object):
         #     path += '/'
         print '====>(2) Translate_path resolving the directory to: ', path
         return path
+
+    def subtract(self, a, b):
+        """
+        :param a: The string to subtract from
+        :param b: what to subtract
+        :return: The result of the subtraction
+        """
+        return "".join(a.rsplit(b))
