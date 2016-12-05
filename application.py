@@ -28,4 +28,16 @@ if __name__ == '__main__':
         view_func=preview_view,
         methods=['GET']
     )
+    download_view = views.DownloadAPI.as_view('download_api')
+    app.add_url_rule(
+        '/wd/<string:file_name>',
+        view_func = download_view,
+        methods=['GET']
+    )
+    app.add_url_rule(
+        '/dd/<string:file_name>',
+        view_func = download_view,
+        methods=['GET']
+    )
+
     app.run(host=app.config['HOST'], port=app.config['PORT'])
