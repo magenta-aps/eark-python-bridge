@@ -173,15 +173,25 @@ class FileManagerHandler(object):
                     error_text='Internal Server Error',
                     info='Error while deleting file'
                 )
-            return flask.jsonify(
-                success=True,
-            )
+        elif os.path.isdir(abs_path):
+            try:
+                os.rmdir(abs_path)
+            except OSError:
+                return flask.jsonify(
+                    error=500,
+                    error_text='Internal Server Error',
+                    info='Error while deleting folder'
+                )
         else:
             return flask.jsonify(
                 error=404,
                 error_text='Not Found',
                 info='File was not found'
             )
+
+        return flask.jsonify(
+            success=True,
+        )
 
     def _get_href_variations(self, href):
         # list of supported prefixes
