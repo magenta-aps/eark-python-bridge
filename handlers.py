@@ -19,7 +19,6 @@ import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
 
-
 class FileManagerHandler(object):
     MIME_PDF = 'application/pdf'
     MIME_TXT = 'text/plain'
@@ -30,8 +29,7 @@ class FileManagerHandler(object):
     MIME_ODF = 'application/vnd.oasis.opendocument.text'
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
-    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR',
-                      'closed': 'DATA_DIR'}
+    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
 
     # -*- Dispatched functions need to go here -*- #
     def list(self, request):
@@ -175,15 +173,25 @@ class FileManagerHandler(object):
                     error_text='Internal Server Error',
                     info='Error while deleting file'
                 )
-            return flask.jsonify(
-                success=True,
-            )
+        elif os.path.isdir(abs_path):
+            try:
+                os.rmdir(abs_path)
+            except OSError:
+                return flask.jsonify(
+                    error=500,
+                    error_text='Internal Server Error',
+                    info='Error while deleting folder'
+                )
         else:
             return flask.jsonify(
                 error=404,
                 error_text='Not Found',
                 info='File was not found'
             )
+
+        return flask.jsonify(
+            success=True,
+        )
 
     def _get_href_variations(self, href):
         # list of supported prefixes
@@ -229,64 +237,87 @@ class FileManagerHandler(object):
         )
 
     def copy(self, request):
-        src = self.translate_path(request.form['source'])
+        sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
-        if os.path.isfile(src):
-            locked_file = LockedFile.query.filter_by(path=src).first()
-            # File was locked for editing...
-            if locked_file:
+
+        for src in sources:
+            if os.path.isfile(src):
+                locked_file = LockedFile.query.filter_by(path=src).first()
+                # File was locked for editing...
+                if locked_file:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='File is locked for editing'
+                    )
+                try:
+                    shutil.copy2(src, dst)
+                except IOError:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='Error while copying file'
+                    )
+
+            elif os.path.isdir(src):
+                try:
+                    if not dst.endswith('/'):
+                        dst += '/'
+                        dst += os.path.basename(src)
+                    shutil.copytree(src, dst)
+                except IOError:
+                    return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
+
+            else:
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='File is locked for editing'
+                    error=404,
+                    error_text='Not Found',
+                    info='File was not found'
                 )
-            try:
-                shutil.copy(src, dst)
-            except IOError:
-                return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='Error while copying file'
-                )
-            return flask.jsonify(
-                success=True,
-            )
-        else:
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found',
-                info='File was not found'
-            )
+        return flask.jsonify(
+            success=True,
+        )
 
     def move(self, request):
-        src = self.translate_path(request.form['source'])
+        sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
-        if os.path.isfile(src):
-            locked_file = LockedFile.query.filter_by(path=src).first()
-            # File was locked for editing...
-            if locked_file:
+
+        for src in sources:
+            if os.path.isfile(src):
+                locked_file = LockedFile.query.filter_by(path=src).first()
+                # File was locked for editing...
+                if locked_file:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='File is locked for editing'
+                    )
+                try:
+                    shutil.move(src, dst)
+                except IOError:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='Error while moving file'
+                    )
+            elif os.path.isdir(src):
+                try:
+                    if not dst.endswith('/'):
+                        dst += '/'
+                    shutil.move(src, dst)
+                except IOError:
+                    return flask.jsonify(error=403, error_text='Forbidden', info='Error while moving directory')
+
+            else:
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='File is locked for editing'
+                    error=404,
+                    error_text='Not Found',
+                    info='File was not found'
                 )
-            try:
-                shutil.move(src, dst)
-            except IOError:
-                return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='Error while moving file'
-                )
-            return flask.jsonify(
-                success=True,
-            )
-        else:
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found',
-                info='File was not found'
-            )
+
+        return flask.jsonify(
+            success=True,
+        )
 
     def mkdir(self, request):
         abs_path = self.translate_path(request.form['path'])
@@ -567,6 +598,30 @@ class FileManagerHandler(object):
         print '====>(2) Translate_path resolving the directory to: ', path
         return path
 
+    def translate_paths(self, paths):
+        """
+        This is a revision of the above, to deal with the copy / move scenario where we can get multiple paths from the
+        specified in the request
+        """
+        path_list = []
+        for path in paths:
+            path = path.split('?', 1)[0]
+            path = path.split('#', 1)[0]
+            # Don't forget explicit trailing slash when normalizing. Issue17324
+            # trailing_slash = path.rstrip().endswith('/')
+            path = posixpath.normpath(urllib.unquote(path))
+            words = path.split('/')
+            words = filter(None, words)
+            path = application.app.config['WORKING_DIR']
+            for word in words:
+                drive, word = os.path.splitdrive(word)
+                head, word = os.path.split(word)
+                if word in (os.curdir, os.pardir):
+                    continue
+                path = os.path.join(path, word)
+            path_list.append(path)
+        return path_list
+
     def subtract(self, a, b):
         """
         :param a: The string to subtract from
@@ -574,3 +629,19 @@ class FileManagerHandler(object):
         :return: The result of the subtraction
         """
         return "".join(a.rsplit(b))
+
+    def extractMultiValueFromForm(self, request, param):
+        """
+        Extracts a multivalued form parameter from the request object.
+        The multi-valued form parameter is assumed to be in the form param[0], param[1], param[n]
+        :param request:
+        :param param:
+        :return:
+        """
+        sources_list = []
+        f = request.form
+        for key in f.keys():
+            if key.startswith(param):
+                for value in f.getlist(key):
+                    sources_list.append(value)
+        return sources_list
