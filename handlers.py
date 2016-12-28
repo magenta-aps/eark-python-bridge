@@ -252,8 +252,8 @@ class FileManagerHandler(object):
                 )
             elif os.path.isdir(src):
                 try:
-                    print '----->(special) Directory detected. Attempting to copy'
-                    shutil.copy(src, dst)
+                    print '\n----->(special) Directory detected. Attempting to copy\n'
+                    shutil.copytree(src, dst)
                 except IOError:
                     return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
             else:
@@ -578,8 +578,6 @@ class FileManagerHandler(object):
         specified in the request
         """
         path_list = []
-        print '----->(special) The number of items in the list is: ', len(paths)
-        print '----->(special) The first path is: ', paths[0]
         for path in paths:
             path = path.split('?', 1)[0]
             path = path.split('#', 1)[0]
@@ -595,9 +593,7 @@ class FileManagerHandler(object):
                 if word in (os.curdir, os.pardir):
                     continue
                 path = os.path.join(path, word)
-            print '====>(special) Translate_path resolving a directory to: ', path
             path_list.append(path)
-        print '----->(special) The number of items in the list is: ', len(path_list)
         return path_list
 
     def subtract(self, a, b):
