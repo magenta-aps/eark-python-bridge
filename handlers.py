@@ -229,6 +229,10 @@ class FileManagerHandler(object):
     def copy(self, request):
         sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
+        print '\n*** (Copying) The number of sources are: ', len(sources)
+        for sauce in sources:
+            print 'Item being copied: ', sauce
+
         for src in sources:
             if os.path.isfile(src):
                 locked_file = LockedFile.query.filter_by(path=src).first()
@@ -240,7 +244,7 @@ class FileManagerHandler(object):
                         info='File is locked for editing'
                     )
                 try:
-                    shutil.copy(src, dst)
+                    shutil.copy2(src, dst)
                 except IOError:
                     return flask.jsonify(
                         error=403,
@@ -252,7 +256,9 @@ class FileManagerHandler(object):
                 )
             elif os.path.isdir(src):
                 try:
-                    print '\n----->(special) Directory detected. Attempting to copy\n'
+                    if not dst.endswith('/'):
+                        dst += '/'
+                        dst += os.path.basename(src)
                     shutil.copytree(src, dst)
                 except IOError:
                     return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
