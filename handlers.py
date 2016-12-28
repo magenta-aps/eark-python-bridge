@@ -229,9 +229,6 @@ class FileManagerHandler(object):
     def copy(self, request):
         sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
-        print '\n*** (Copying) The number of sources are: ', len(sources)
-        for sauce in sources:
-            print 'Item being copied: ', sauce
 
         for src in sources:
             if os.path.isfile(src):
@@ -260,7 +257,7 @@ class FileManagerHandler(object):
                     shutil.copytree(src, dst)
                 except IOError:
                     return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
-                
+
             else:
                 return flask.jsonify(
                     error=404,
@@ -272,34 +269,45 @@ class FileManagerHandler(object):
         )
 
     def move(self, request):
-        src = self.translate_path(request.form['source'])
+        sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
-        if os.path.isfile(src):
-            locked_file = LockedFile.query.filter_by(path=src).first()
-            # File was locked for editing...
-            if locked_file:
+
+        for src in sources:
+            if os.path.isfile(src):
+                locked_file = LockedFile.query.filter_by(path=src).first()
+                # File was locked for editing...
+                if locked_file:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='File is locked for editing'
+                    )
+                try:
+                    shutil.move(src, dst)
+                except IOError:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='Error while moving file'
+                    )
+            elif os.path.isdir(src):
+                try:
+                    if not dst.endswith('/'):
+                        dst += '/'
+                    shutil.move(src, dst)
+                except IOError:
+                    return flask.jsonify(error=403, error_text='Forbidden', info='Error while moving directory')
+
+            else:
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='File is locked for editing'
+                    error=404,
+                    error_text='Not Found',
+                    info='File was not found'
                 )
-            try:
-                shutil.move(src, dst)
-            except IOError:
-                return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='Error while moving file'
-                )
-            return flask.jsonify(
-                success=True,
-            )
-        else:
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found',
-                info='File was not found'
-            )
+
+        return flask.jsonify(
+            success=True,
+        )
 
     def mkdir(self, request):
         abs_path = self.translate_path(request.form['path'])
@@ -625,6 +633,5 @@ class FileManagerHandler(object):
         for key in f.keys():
             if key.startswith(param):
                 for value in f.getlist(key):
-                    print key, ":", value
                     sources_list.append(value)
         return sources_list
