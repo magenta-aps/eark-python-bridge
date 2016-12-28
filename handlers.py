@@ -251,9 +251,7 @@ class FileManagerHandler(object):
                         error_text='Forbidden',
                         info='Error while copying file'
                     )
-                return flask.jsonify(
-                    success=True,
-                )
+
             elif os.path.isdir(src):
                 try:
                     if not dst.endswith('/'):
@@ -262,12 +260,16 @@ class FileManagerHandler(object):
                     shutil.copytree(src, dst)
                 except IOError:
                     return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
+                
             else:
                 return flask.jsonify(
                     error=404,
                     error_text='Not Found',
                     info='File was not found'
                 )
+        return flask.jsonify(
+            success=True,
+        )
 
     def move(self, request):
         src = self.translate_path(request.form['source'])
