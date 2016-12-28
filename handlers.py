@@ -7,6 +7,7 @@ import urllib
 import posixpath
 import flask
 import os
+import os.path
 import magic
 import subprocess
 import shutil
@@ -17,37 +18,22 @@ from werkzeug.utils import secure_filename
 import xml.etree.cElementTree as ET
 import application
 from models import LockedFile
-from enum import Enum
-
 
 class FileManagerHandler(object):
     MIME_PDF = 'application/pdf'
     MIME_TXT = 'text/plain'
-
     MIME_JPG = 'image/jpeg'
     MIME_PNG = 'image/png'
-
     MIME_DOC = 'application/msword'
-    MIME_DOCX = 'application/vnd.openxmlformats-officedocument' \
-                '.wordprocessingml.document'
-
+    MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     MIME_ODF = 'application/vnd.oasis.opendocument.text'
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
+    ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
 
-
-# -*- Dispatched functions need to go here -*- #
+    # -*- Dispatched functions need to go here -*- #
     def list(self, request):
-        # Used to determine where we should be browsing
-        OrderStatusEnum = Enum(open='WORKING_DIR', ready='DATA_DIR', closed='DATA_DIR')
-
-        if request.form['orderStatus'] :
-            orderStatus = request.form['orderStatus'].lower()
-            print '====>(1) Hurrah!! orderStatus detected: ', orderStatus
-            path = self.translate_path(request.form['path'], OrderStatusEnum[orderStatus])
-        else:
-            path = self.translate_path(request.form['path'])
-
+        path = self._resolve_directory(request)
         try:
             list = os.listdir(path)
         except os.error:
@@ -77,15 +63,24 @@ class FileManagerHandler(object):
         return flask.jsonify(children=files)
 
     def get_content(self, request):
-        path = self.translate_path(request.form['path'])
+        rr_path = request.form['path']
+        path = self._resolve_directory(request)
+
         # Only do anything if the requested file exists. Otherwise: 404
         if os.path.exists(path) and not os.path.isdir(path):
             checksum = self._sha256sum(path)
             mime = magic.from_file(path, mime=True)
             filename_wo_ext = os.path.splitext(os.path.split(path)[1])[0]
-            filename = os.path.basename(path)
-            rel_path = 'preview/' + checksum
+            rel_path = 'preview/' + checksum + '.pdf'
             preview_path = application.app.config['PREVIEW_DIR'] + checksum
+            # Construct download path
+            if application.app.config['DATA_DIR'] in path:
+                download_path = 'dd' + rr_path
+            elif application.app.config['WORKING_DIR'] in path:
+                download_path = 'wd' + rr_path
+            else:
+                download_path = ''
+
             # We basically try to convert everything to PDFs and throw it in
             # the 'preview' directory unless it's already a PDF.
             #  Todo: Be more verbose about what went wrong if conversion fails?
@@ -94,12 +89,11 @@ class FileManagerHandler(object):
                 if mime == self.MIME_PDF:
                     success = self._copy_to_preview(path, preview_path)
                 else:
-                    success = self._create_preview(path, checksum,
-                                                   filename_wo_ext)
+                    success = self._create_preview(path, checksum, filename_wo_ext)
                 if success:
                     return flask.jsonify(
                         preview_url=request.host_url + urllib.quote(rel_path),
-                        download_url=request.host_url + urllib.quote(filename)
+                        download_url=request.host_url + urllib.quote(download_path)
                     )
                 else:
                     return flask.jsonify(
@@ -109,7 +103,7 @@ class FileManagerHandler(object):
             else:
                 return flask.jsonify(
                     preview_url=request.host_url + urllib.quote(rel_path),
-                    download_url=request.host_url + urllib.quote(filename)
+                    download_url=request.host_url + urllib.quote(download_path)
                 )
         else:
             return flask.jsonify(
@@ -233,34 +227,41 @@ class FileManagerHandler(object):
         )
 
     def copy(self, request):
-        src = self.translate_path(request.form['source'])
+        sources = self.translate_paths(request.form.getlist('source'))
         dst = self.translate_path(request.form['destination'])
-        if os.path.isfile(src):
-            locked_file = LockedFile.query.filter_by(path=src).first()
-            # File was locked for editing...
-            if locked_file:
+        for src in sources:
+            if os.path.isfile(src):
+                locked_file = LockedFile.query.filter_by(path=src).first()
+                # File was locked for editing...
+                if locked_file:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='File is locked for editing'
+                    )
+                try:
+                    shutil.copy(src, dst)
+                except IOError:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='Error while copying file'
+                    )
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='File is locked for editing'
+                    success=True,
                 )
-            try:
-                shutil.copy(src, dst)
-            except IOError:
+            elif os.path.isdir(src):
+                try:
+                    print '----->(special) Directory detected. Attempting to copy'
+                    shutil.copy(src, dst)
+                except IOError:
+                    return flask.jsonify(error=403, error_text='Forbidden', info='Error while copying directory')
+            else:
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='Error while copying file'
+                    error=404,
+                    error_text='Not Found',
+                    info='File was not found'
                 )
-            return flask.jsonify(
-                success=True,
-            )
-        else:
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found',
-                info='File was not found'
-            )
 
     def move(self, request):
         src = self.translate_path(request.form['source'])
@@ -309,8 +310,8 @@ class FileManagerHandler(object):
     def untar(self, request):
         abs_path = self.translate_path(request.form['path'])
         try:
-            tar = tarfile.open(abs_path+".tar")
-            print ("The file path is : ", abs_path+".tar")
+            tar = tarfile.open(abs_path + ".tar")
+            print ("The file path is : ", abs_path + ".tar")
             tar.extractall(path=application.app.config['DATA_DIR'])
             tar.close()
         except (ValueError, tarfile.ReadError, tarfile.CompressionError):
@@ -329,22 +330,68 @@ class FileManagerHandler(object):
             success=True,
         )
 
-    def _path_to_dict(self, path):
-        d = {}
-        data_dir = application.app.config['DATA_DIR']
-        abs_path = data_dir + path
-        if os.path.isdir(abs_path):
-            d[os.path.basename(path)] = {
-                'children': [
-                    self._path_to_dict(os.path.join(path, x))
-                    for x in os.listdir(abs_path)
-                    if os.path.isdir(os.path.join(abs_path, x))]
-            }
-        return d
+    def _path_to_dict(self, path, prefix_path):
+
+        folders = path.split('/')[1:]
+        current_path = os.path.join(prefix_path, folders[0])
+        print current_path
+        tree = {'name': os.path.basename(current_path), 'path': '/' + os.path.relpath(current_path, prefix_path),
+                'type': 'folder'}
+        current_dict = tree
+
+        for i in range(len(folders)):
+
+            if i < len(folders) - 1:
+                items_in_current_path = [f for f in os.listdir(current_path) if
+                                         os.path.isdir(os.path.join(current_path, f))]
+            else:
+                items_in_current_path = os.listdir(current_path)
+
+            if not len(items_in_current_path) == 0:
+                children = []
+                if i < len(folders) - 1:
+                    # Not at the leaf folder
+                    for f in items_in_current_path:
+                        relative_path = '/' + os.path.relpath(os.path.join(current_path, f), prefix_path)
+                        name_path_dict = {'name': f, 'path': relative_path, 'type': 'folder'}
+                        if f == folders[i + 1]:
+                            d = name_path_dict
+                        children.append(name_path_dict)
+                    current_dict['children'] = children
+                    current_dict = d
+                    current_path = os.path.join(current_path, d['name'])
+                else:
+                    # At the leaf folder
+                    for f in items_in_current_path:
+                        abs_path = os.path.join(current_path, f)
+                        relative_path = '/' + os.path.relpath(abs_path, prefix_path)
+                        name_path_dict = {'name': f, 'path': relative_path}
+                        if os.path.isdir(abs_path):
+                            name_path_dict['type'] = 'folder'
+                        else:
+                            name_path_dict['type'] = 'file'
+                        children.append(name_path_dict)
+                    current_dict['children'] = children
+
+        return tree
 
     def get_tree(self, request):
         path = request.form['path']
-        d = self._path_to_dict(path)
+        orderStatus = request.form['orderStatus']
+
+        # Check if orderStatus is allowed
+        if not orderStatus in FileManagerHandler.ORDERSTATUSMAP.keys():
+            return flask.jsonify({'success': False, 'message': 'orderStatus must be one of ' + ', '.join(
+                FileManagerHandler.ORDERSTATUSMAP.keys())}), 412
+
+        prefix_path = application.app.config[FileManagerHandler.ORDERSTATUSMAP[orderStatus]]
+
+        # Check that the path exists
+        abs_path = os.path.join(prefix_path, path[1:])
+        if not os.path.exists(abs_path):
+            return flask.jsonify({'success': False, 'message': 'The path \'' + path + '\' does not exists'}), 412
+
+        d = self._path_to_dict(path, prefix_path)
         return flask.jsonify(d)
 
     # -*- endblock -*- #
@@ -431,7 +478,7 @@ class FileManagerHandler(object):
                 "-f",
                 "pdf",
                 "-o",
-                application.app.config['PREVIEW_DIR'] + checksum,
+                application.app.config['PREVIEW_DIR'] + checksum + '.pdf',
                 path
             ]
         )
@@ -473,6 +520,25 @@ class FileManagerHandler(object):
                     success=True,
                 )
 
+    def _resolve_directory(self, request):
+        """
+        This method is used to determine which directory to browse between the Working directory or the
+        data directory (where DIPS have been exploded).
+        For the method to work, the form in the request must contain an orderStatus property which is used
+        to determine where we should be browsing.
+        :param request:
+        :return:
+        """
+
+        if request.form['orderStatus']:
+            orderStatus = request.form['orderStatus'].lower()
+            print 'order status is: ', orderStatus
+            path = self.translate_path(request.form['path'], FileManagerHandler.ORDERSTATUSMAP[orderStatus])
+        else:
+            path = self.translate_path(request.form['path'])
+
+        return path
+
     def translate_path(self, path, *directory_root):
         """
         This was stolen from SimpleHTTPServer.translate_path()
@@ -491,11 +557,10 @@ class FileManagerHandler(object):
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
         words = filter(None, words)
-        if directory_root :
+        if directory_root:
             path = application.app.config[directory_root[0]]
-            print '====>(2) Translate_path resolving the directory to: ', path
         else:
-            path = application.app.config['DATA_DIR']
+            path = application.app.config['WORKING_DIR']
         for word in words:
             drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
@@ -504,4 +569,39 @@ class FileManagerHandler(object):
             path = os.path.join(path, word)
         # if trailing_slash:
         #     path += '/'
+        print '====>(2) Translate_path resolving the directory to: ', path
         return path
+
+    def translate_paths(self, paths):
+        """
+        This is a revision of the above, to deal with the copy / move scenario where we can get multiple paths from the
+        specified in the request
+        """
+        path_list = []
+        for path in paths:
+            path = path.split('?', 1)[0]
+            path = path.split('#', 1)[0]
+            # Don't forget explicit trailing slash when normalizing. Issue17324
+            # trailing_slash = path.rstrip().endswith('/')
+            path = posixpath.normpath(urllib.unquote(path))
+            words = path.split('/')
+            words = filter(None, words)
+            path = application.app.config['WORKING_DIR']
+            for word in words:
+                drive, word = os.path.splitdrive(word)
+                head, word = os.path.split(word)
+                if word in (os.curdir, os.pardir):
+                    continue
+                path = os.path.join(path, word)
+            print '====>(special) Translate_path resolving a directory to: ', path
+            path_list.append(path)
+        print '----->(special) The number of items in the list is: ', len(path_list)
+        return path_list
+
+    def subtract(self, a, b):
+        """
+        :param a: The string to subtract from
+        :param b: what to subtract
+        :return: The result of the subtraction
+        """
+        return "".join(a.rsplit(b))
