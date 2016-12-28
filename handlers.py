@@ -227,7 +227,7 @@ class FileManagerHandler(object):
         )
 
     def copy(self, request):
-        sources = self.translate_paths(request.form.getlist('source'))
+        sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
         dst = self.translate_path(request.form['destination'])
         for src in sources:
             if os.path.isfile(src):
@@ -578,6 +578,8 @@ class FileManagerHandler(object):
         specified in the request
         """
         path_list = []
+        print '----->(special) The number of items in the list is: ', len(paths)
+        print '----->(special) The first path is: ', paths[0]
         for path in paths:
             path = path.split('?', 1)[0]
             path = path.split('#', 1)[0]
@@ -605,3 +607,20 @@ class FileManagerHandler(object):
         :return: The result of the subtraction
         """
         return "".join(a.rsplit(b))
+
+    def extractMultiValueFromForm(self, request, param):
+        """
+        Extracts a multivalued form parameter from the request object.
+        The multi-valued form parameter is assumed to be in the form param[0], param[1], param[n]
+        :param request:
+        :param param:
+        :return:
+        """
+        sources_list = []
+        f = request.form
+        for key in f.keys():
+            if key.startswith(param):
+                for value in f.getlist(key):
+                    print key, ":", value
+                    sources_list.append(value)
+        return sources_list
