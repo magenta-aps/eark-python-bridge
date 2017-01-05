@@ -167,7 +167,7 @@ class FileManagerHandler(object):
                         info='File is locked for editing'
                     )
                 try:
-                    shutil.rmtree(abs_path)
+                    os.remove(abs_path)
                 except OSError:
                     return flask.jsonify(
                         error=500,
@@ -176,7 +176,7 @@ class FileManagerHandler(object):
                     )
             elif os.path.isdir(abs_path):
                 try:
-                    os.rmdir(abs_path)
+                    shutil.rmtree(abs_path)
                 except OSError:
                     return flask.jsonify(
                         error=500,
