@@ -155,39 +155,40 @@ class FileManagerHandler(object):
             )
 
     def delete(self, request):
-        abs_path = self.translate_path(request.form['path'])
-        if os.path.isfile(abs_path):
-            locked_file = LockedFile.query.filter_by(path=abs_path).first()
-            # File was locked for editing...
-            if locked_file:
+        paths = self.translate_paths(self.extractMultiValueFromForm(request, 'paths'))
+        for abs_path in paths:
+            if os.path.isfile(abs_path):
+                locked_file = LockedFile.query.filter_by(path=abs_path).first()
+                # File was locked for editing...
+                if locked_file:
+                    return flask.jsonify(
+                        error=403,
+                        error_text='Forbidden',
+                        info='File is locked for editing'
+                    )
+                try:
+                    os.remove(abs_path)
+                except OSError:
+                    return flask.jsonify(
+                        error=500,
+                        error_text='Internal Server Error',
+                        info='Error while deleting file'
+                    )
+            elif os.path.isdir(abs_path):
+                try:
+                    os.rmdir(abs_path)
+                except OSError:
+                    return flask.jsonify(
+                        error=500,
+                        error_text='Internal Server Error',
+                        info='Error while deleting folder'
+                    )
+            else:
                 return flask.jsonify(
-                    error=403,
-                    error_text='Forbidden',
-                    info='File is locked for editing'
+                    error=404,
+                    error_text='Not Found',
+                    info='File was not found'
                 )
-            try:
-                os.remove(abs_path)
-            except OSError:
-                return flask.jsonify(
-                    error=500,
-                    error_text='Internal Server Error',
-                    info='Error while deleting file'
-                )
-        elif os.path.isdir(abs_path):
-            try:
-                os.rmdir(abs_path)
-            except OSError:
-                return flask.jsonify(
-                    error=500,
-                    error_text='Internal Server Error',
-                    info='Error while deleting folder'
-                )
-        else:
-            return flask.jsonify(
-                error=404,
-                error_text='Not Found',
-                info='File was not found'
-            )
 
         return flask.jsonify(
             success=True,
