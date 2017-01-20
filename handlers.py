@@ -72,7 +72,7 @@ class FileManagerHandler(object):
             mime = magic.from_file(path, mime=True)
             filename_wo_ext = os.path.splitext(os.path.split(path)[1])[0]
             rel_path = 'preview/' + checksum + '.pdf'
-            preview_path = application.app.config['PREVIEW_DIR'] + checksum
+            preview_path = application.app.config['PREVIEW_DIR'] + checksum+ '.pdf'
             # Construct download path
             if application.app.config['DATA_DIR'] in path:
                 download_path = 'dd' + rr_path
