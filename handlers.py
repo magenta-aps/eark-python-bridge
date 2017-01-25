@@ -16,6 +16,7 @@ import tarfile
 import xmltodict
 from werkzeug.utils import secure_filename
 import xml.etree.cElementTree as ET
+import lxml.etree as LET
 import application
 from models import LockedFile
 
@@ -232,11 +233,10 @@ class FileManagerHandler(object):
                 info='No metadata associated to this element'
             )
 
-    
-
-        # tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
+	root = LET.parse(EAD_path).getroot()
         tree = ET.parse(EAD_path)
-        # regular file - daoset
+        
+	# regular file - daoset
         for prefix in FileManagerHandler.PREFIXES:
 	    # HACK - should be refactored
 	    href = prefix + "../.." + parts[1] + parts[2]
@@ -246,17 +246,22 @@ class FileManagerHandler(object):
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
+
         # regular file - no daoset
         for prefix in FileManagerHandler.PREFIXES:
        	    # HACK - should be refactored
 	    href = prefix + "../.." + parts[1] + parts[2]
 	    print 'href =', href
 	    # did_list = tree.findall(".//%sdid/%sdao[@href='%s']/.." % (namespace, namespace, href))
-            did_list = tree.findall(".//%sdid/%sdao[@href='%s']" % (namespace, namespace, href))
-            if did_list:
-	        print 'did_list =', did_list
-                o = xmltodict.parse(ET.tostring(did_list[0]))
+            # did_list = tree.findall(".//%sdid/%sdao[@href='%s']" % (namespace, namespace, href))
+	    dao = root.find('.//%sdid/%sdao[@href="%s"]' % (namespace, namespace, href))
+	    print 'dao =', dao
+            if dao is not None:
+		print 'HURRAAAAAAAAA'
+	        print 'dao =', dao
+                o = xmltodict.parse(ET.tostring(dao.getparent()))
                 return json.dumps(o)
+
         # directory
         for href in hrefs:
             did_list = tree.findall(".//%sc[@base='%s']/%sdid"
@@ -265,6 +270,7 @@ class FileManagerHandler(object):
 	        print 'did_list =', did_list
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
+
         # fallback
 	print 'hurra'
         return flask.jsonify(
@@ -272,6 +278,8 @@ class FileManagerHandler(object):
             error_text='Not Found',
             info='No metadata associated to this element'
         )
+
+
 
     def copy(self, request):
         sources = self.translate_paths(self.extractMultiValueFromForm(request, 'source'))
