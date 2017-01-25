@@ -30,6 +30,7 @@ class FileManagerHandler(object):
 
     CONVERT_MIME_LIST = [MIME_TXT, MIME_DOC, MIME_DOCX, MIME_ODF]
     ORDERSTATUSMAP = {'packaging': 'WORKING_DIR', 'processing': 'WORKING_DIR', 'ready': 'DATA_DIR', 'closed': 'DATA_DIR'}
+    PREFIXES = ['', 'file://', 'file:', 'file/']
 
     # -*- Dispatched functions need to go here -*- #
     def list(self, request):
@@ -195,32 +196,65 @@ class FileManagerHandler(object):
         )
 
     def _get_href_variations(self, href):
+	"""NOTE: Currently only working (and used) for directories"""
+	print '############## Inside _get_href_variations ###############'
+	print 'href =', href
         # list of supported prefixes
-        prefixes = ['', 'file://', 'file:', 'file/']
         variations = []
-        for prefix in prefixes:
+        for prefix in FileManagerHandler.PREFIXES:
             variations.append(prefix + href.lstrip('/'))
         return variations
 
     def get_info(self, request):
         path = self.translate_path(request.form['path'])
+	print 'path =', path
         parts = path.partition('/representations')
+	print 'parts =', parts
         ip = parts[0]
+	#print 'ip =', ip
         hrefs = self._get_href_variations(parts[1] + parts[2])
+	print 'hrefs =', hrefs
         namespace = '{http://ead3.archivists.org/schema/}'
-        tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
+	
+	# HACK - must use different EADs depending on the path
+	if 'submission' in path:
+	    path_partitions = path.partition('submission')
+	    # print 'path_partitions[0] =', path_partitions[0] + 'submission/metadata/descriptive/EAD.xml'
+	    EAD_path = path_partitions[0] + 'submission/metadata/descriptive/EAD.xml'
+	    print 'EAD_path =',EAD_path
+	else:
+	    EAD_path = path + '/metadata/descriptive/EAD.xml'
+
+	if not os.path.isfile(EAD_path):
+	    return flask.jsonify(
+                error=404,
+                error_text='Not Found',
+                info='No metadata associated to this element'
+            )
+
+    
+
+        # tree = ET.parse('%s/metadata/descriptive/EAD.xml' % ip)
+        tree = ET.parse(EAD_path)
         # regular file - daoset
-        for href in hrefs:
-            did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']/../.."
+        for prefix in FileManagerHandler.PREFIXES:
+	    # HACK - should be refactored
+	    href = prefix + "../.." + parts[1] + parts[2]
+	    #print 'href =', href
+            did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']../.."
                                     % (namespace, namespace, href))
             if did_list:
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
         # regular file - no daoset
-        for href in hrefs:
-            did_list = tree.findall(".//%sdid/%sdao[@href='%s']/.."
-                                    % (namespace, namespace, href))
+        for prefix in FileManagerHandler.PREFIXES:
+       	    # HACK - should be refactored
+	    href = prefix + "../.." + parts[1] + parts[2]
+	    print 'href =', href
+	    # did_list = tree.findall(".//%sdid/%sdao[@href='%s']/.." % (namespace, namespace, href))
+            did_list = tree.findall(".//%sdid/%sdao[@href='%s']" % (namespace, namespace, href))
             if did_list:
+	        print 'did_list =', did_list
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
         # directory
@@ -228,9 +262,11 @@ class FileManagerHandler(object):
             did_list = tree.findall(".//%sc[@base='%s']/%sdid"
                                     % (namespace, href, namespace))
             if did_list:
+	        print 'did_list =', did_list
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
         # fallback
+	print 'hurra'
         return flask.jsonify(
             error=404,
             error_text='Not Found',
