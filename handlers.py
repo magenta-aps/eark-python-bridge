@@ -198,8 +198,6 @@ class FileManagerHandler(object):
 
     def _get_href_variations(self, href):
 	"""NOTE: Currently only working (and used) for directories"""
-	print '############## Inside _get_href_variations ###############'
-	print 'href =', href
         # list of supported prefixes
         variations = []
         for prefix in FileManagerHandler.PREFIXES:
@@ -207,24 +205,18 @@ class FileManagerHandler(object):
         return variations
 
     def get_info(self, request):
-        path = self.translate_path(request.form['path'])
-	print 'path =', path
+	path = self._resolve_directory(request) 
         parts = path.partition('/representations')
-	print 'parts =', parts
-        ip = parts[0]
-	#print 'ip =', ip
         hrefs = self._get_href_variations(parts[1] + parts[2])
-	print 'hrefs =', hrefs
         namespace = '{http://ead3.archivists.org/schema/}'
 	
 	# HACK - must use different EADs depending on the path
 	if 'submission' in path:
 	    path_partitions = path.partition('submission')
-	    # print 'path_partitions[0] =', path_partitions[0] + 'submission/metadata/descriptive/EAD.xml'
 	    EAD_path = path_partitions[0] + 'submission/metadata/descriptive/EAD.xml'
-	    print 'EAD_path =',EAD_path
 	else:
-	    EAD_path = path + '/metadata/descriptive/EAD.xml'
+	    path_partitions = path.partition('representations')
+	    EAD_path = path_partitions[0] + 'metadata/descriptive/EAD.xml'
 
 	if not os.path.isfile(EAD_path):
 	    return flask.jsonify(
@@ -238,9 +230,8 @@ class FileManagerHandler(object):
         
 	# regular file - daoset
         for prefix in FileManagerHandler.PREFIXES:
-	    # HACK - should be refactored
+	    # TODO: this case have not been tested (and it is probably not working) 
 	    href = prefix + "../.." + parts[1] + parts[2]
-	    #print 'href =', href
             did_list = tree.findall(".//%sdid/*/%sdao[@href='%s']../.."
                                     % (namespace, namespace, href))
             if did_list:
@@ -251,14 +242,8 @@ class FileManagerHandler(object):
         for prefix in FileManagerHandler.PREFIXES:
        	    # HACK - should be refactored
 	    href = prefix + "../.." + parts[1] + parts[2]
-	    print 'href =', href
-	    # did_list = tree.findall(".//%sdid/%sdao[@href='%s']/.." % (namespace, namespace, href))
-            # did_list = tree.findall(".//%sdid/%sdao[@href='%s']" % (namespace, namespace, href))
 	    dao = root.find('.//%sdid/%sdao[@href="%s"]' % (namespace, namespace, href))
-	    print 'dao =', dao
             if dao is not None:
-		print 'HURRAAAAAAAAA'
-	        print 'dao =', dao
                 o = xmltodict.parse(ET.tostring(dao.getparent()))
                 return json.dumps(o)
 
@@ -267,12 +252,10 @@ class FileManagerHandler(object):
             did_list = tree.findall(".//%sc[@base='%s']/%sdid"
                                     % (namespace, href, namespace))
             if did_list:
-	        print 'did_list =', did_list
                 o = xmltodict.parse(ET.tostring(did_list[0]))
                 return json.dumps(o)
 
         # fallback
-	print 'hurra'
         return flask.jsonify(
             error=404,
             error_text='Not Found',
@@ -603,7 +586,7 @@ class FileManagerHandler(object):
 
         if request.form['orderStatus']:
             orderStatus = request.form['orderStatus'].lower()
-            print 'order status is: ', orderStatus
+            # print 'order status is: ', orderStatus
             path = self.translate_path(request.form['path'], FileManagerHandler.ORDERSTATUSMAP[orderStatus])
         else:
             path = self.translate_path(request.form['path'])
@@ -640,7 +623,7 @@ class FileManagerHandler(object):
             path = os.path.join(path, word)
         # if trailing_slash:
         #     path += '/'
-        print '====>(2) Translate_path resolving the directory to: ', path
+        # print '====>(2) Translate_path resolving the directory to: ', path
         return path
 
     def translate_paths(self, paths):
