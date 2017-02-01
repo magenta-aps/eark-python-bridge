@@ -16,6 +16,6 @@ PREVIEW_DIR = BASE_DIR + '/preview/'
 SQLALCHEMY_DATABASE_URI = 'mysql://eark:eark@localhost/eark_ipViewer'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-DEBUG = True
+DEBUG = False
 HOST = '0.0.0.0'
 PORT = 8889
